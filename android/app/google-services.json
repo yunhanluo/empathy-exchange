@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "45791923833",
+    "firebase_url": "https://empathy-exchange-473417-default-rtdb.firebaseio.com",
+    "project_id": "empathy-exchange-473417",
+    "storage_bucket": "empathy-exchange-473417.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:45791923833:android:474eb3ed4cc8e5326b8ea8",
+        "android_client_info": {
+          "package_name": "com.example.phacks"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAD-FJitRMukR5x62_VktUyTVFRmtpf7Dg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
