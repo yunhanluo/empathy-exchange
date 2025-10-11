@@ -37,6 +37,7 @@ dependencies:
   cloud_firestore: ^5.4.3
   firebase_storage: ^12.3.2
   firebase_analytics: ^11.3.3
+  firebase_database: ^11.3.10
   
   # Google Sign-In
   google_sign_in: ^6.2.1

@@ -1,3 +1,4 @@
+import 'package:empathy_exchange/screens/chat_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -227,7 +228,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildChatTab() {
-    return Container(
+    /*return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -267,7 +268,8 @@ class _HomePageState extends State<HomePage> {
           ],
         ),
       ),
-    );
+    );*/
+    return const ChatPage(title: "Empathy Exchange");
   }
 
   Widget _buildProfileTab() {
