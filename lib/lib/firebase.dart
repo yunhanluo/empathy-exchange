@@ -27,4 +27,10 @@ class FirebaseTools {
     final DatabaseReference ref2 = ref.child(path);
     ref2.update(dict);
   }
+
+  static void initialize() async {
+    if (! await exists("chats")) {
+      save("chats", {});
+    }
+  }
 }

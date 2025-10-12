@@ -1,3 +1,4 @@
+import 'package:empathy_exchange/lib/firebase.dart';
 import 'package:empathy_exchange/screens/chat_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -10,8 +11,22 @@ import 'firebase_options.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
+    // options: DefaultFirebaseOptions.currentPlatform,
+    options: const FirebaseOptions(
+      apiKey: "AIzaSyCESD67BYe9qPr1XGiEfvm3oUsqWodvRJw",
+      authDomain: "empathy-exchange-473417.firebaseapp.com",
+      databaseURL:
+          "https://empathy-exchange-473417-default-rtdb.firebaseio.com",
+      projectId: "empathy-exchange-473417",
+      storageBucket: "empathy-exchange-473417.firebasestorage.app",
+      messagingSenderId: "45791923833",
+      appId: "1:45791923833:web:2aba95f57c8e9dfa6b8ea8",
+      measurementId: "G-WB44LX8J7K",
+    ),
   );
+
+  FirebaseTools.initialize();
+
   runApp(const MyApp());
 }
 
@@ -72,11 +87,88 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
+  String _newChatText = "New Chat";
+  String _otherUidHint = "Enter other user's uid...";
+
+  TextEditingController uidController = TextEditingController();
 
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
     });
+  }
+
+  void _showCreateChatDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          title: const Text("Create New Chat"),
+          content: TextField(
+            decoration: InputDecoration(
+              hintText: _otherUidHint,
+            ),
+            onSubmitted: (String value) async {
+              _runOpenChat(value);
+            },
+            controller: uidController,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text("Cancel"),
+            ),
+            TextButton(
+              onPressed: () async {
+                _runOpenChat(uidController.text);
+              },
+              child: const Text("Okay"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _runOpenChat(String enteredUid) {
+    bool success = false;
+
+    if (! mounted) return;
+    
+    setState(() {
+      () async {
+        if (_newChatText != "Open Chat") {
+          String? myUid = FirebaseAuth.instance.currentUser?.uid;
+
+          if (myUid != null) {
+            List<String> parts = [myUid, enteredUid];
+            parts.sort();
+            String path = parts.join('&');
+
+            if (! await FirebaseTools.exists("chats/$path")) {
+              FirebaseTools.save("chats/$path", {
+                "messages": [],
+              });
+            }
+
+            _newChatText = "Open Chat";
+            _selectedIndex = 1;
+
+            success = true;
+          }
+        }
+      }();
+    });
+
+    if (success) {
+      Navigator.of(context).pop();
+    }
   }
 
   @override
@@ -221,6 +313,14 @@ class _HomePageState extends State<HomePage> {
                 ],
               ),
             ),
+            const SizedBox(height: 20), // Added SizedBox for padding
+            FloatingActionButton.extended(
+              label: Text(_newChatText),
+              icon: const Icon(Icons.add),
+              onPressed: () {
+                _showCreateChatDialog(context);
+              },
+            ),
           ],
         ),
       ),
@@ -269,7 +369,7 @@ class _HomePageState extends State<HomePage> {
         ),
       ),
     );*/
-    return const ChatPage(title: "Empathy Exchange");
+    return const ChatPage();
   }
 
   Widget _buildProfileTab() {
