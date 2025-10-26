@@ -6,7 +6,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'screens/login_screen.dart';
 import 'screens/profile_screen.dart';
-import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -99,6 +98,11 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _showCreateChatDialog(BuildContext context) {
+    if (_newChatText != "New Chat") {
+      _selectedIndex = 1;
+      return;
+    }
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -137,38 +141,36 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _runOpenChat(String enteredUid) {
-    bool success = false;
-
-    if (! mounted) return;
+    if (! mounted) {
+      print("not mounted");
+      return;
+    }
     
     setState(() {
       () async {
-        if (_newChatText != "Open Chat") {
-          String? myUid = FirebaseAuth.instance.currentUser?.uid;
+        String? myUid = FirebaseAuth.instance.currentUser?.uid;
 
-          if (myUid != null) {
-            List<String> parts = [myUid, enteredUid];
-            parts.sort();
-            String path = parts.join('&');
+        if (myUid != null) {
+          List<String> parts = [myUid, enteredUid];
+          parts.sort();
+          String path = parts.join('&');
 
-            if (! await FirebaseTools.exists("chats/$path")) {
-              FirebaseTools.save("chats/$path", {
-                "messages": [],
-              });
-            }
-
-            _newChatText = "Open Chat";
-            _selectedIndex = 1;
-
-            success = true;
+          if (! await FirebaseTools.exists("chats/$path")) {
+            FirebaseTools.save("chats/$path", {
+              "messages": [],
+            });
           }
+
+          _newChatText = "Open Chat";
+          _selectedIndex = 1;
+
+          if (mounted) Navigator.of(context).pop();
+        } else {
+          uidController.clear();
+          _otherUidHint = "Try again.";
         }
       }();
     });
-
-    if (success) {
-      Navigator.of(context).pop();
-    }
   }
 
   @override
@@ -247,7 +249,7 @@ class _HomePageState extends State<HomePage> {
       case 0:
         return _buildHomeTab();
       case 1:
-        return _buildChatTab();
+        return _buildChatSelectTab();
       case 2:
         return _buildProfileTab();
       default:
@@ -313,21 +315,21 @@ class _HomePageState extends State<HomePage> {
                 ],
               ),
             ),
-            const SizedBox(height: 20), // Added SizedBox for padding
-            FloatingActionButton.extended(
-              label: Text(_newChatText),
-              icon: const Icon(Icons.add),
-              onPressed: () {
-                _showCreateChatDialog(context);
-              },
-            ),
+            // const SizedBox(height: 20), // Added SizedBox for padding
+            // FloatingActionButton.extended(
+            //   label: Text(_newChatText),
+            //   icon: const Icon(Icons.add),
+            //   onPressed: () {
+            //     _showCreateChatDialog(context);
+            //   },
+            // ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildChatTab() {
+  Widget _buildChatSelectTab() {
     /*return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
