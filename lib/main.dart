@@ -1,5 +1,6 @@
 import 'package:empathy_exchange/lib/firebase.dart';
 import 'package:empathy_exchange/screens/chat_screen.dart';
+import 'package:empathy_exchange/widgets/material.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -34,18 +35,7 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Empathy Exchange',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF667eea),
-        ),
-        textTheme: GoogleFonts.nunitoTextTheme(),
-        useMaterial3: true,
-      ),
-      home: const AuthWrapper(),
-      debugShowCheckedModeBanner: false,
-    );
+    return materialAppInstance(context, const AuthWrapper());
   }
 }
 
@@ -142,7 +132,6 @@ class _HomePageState extends State<HomePage> {
 
   void _runOpenChat(String enteredUid) {
     if (! mounted) {
-      print("not mounted");
       return;
     }
     
@@ -315,14 +304,6 @@ class _HomePageState extends State<HomePage> {
                 ],
               ),
             ),
-            // const SizedBox(height: 20), // Added SizedBox for padding
-            // FloatingActionButton.extended(
-            //   label: Text(_newChatText),
-            //   icon: const Icon(Icons.add),
-            //   onPressed: () {
-            //     _showCreateChatDialog(context);
-            //   },
-            // ),
           ],
         ),
       ),
