@@ -1,5 +1,7 @@
 import 'package:empathy_exchange/widgets/material.dart';
 import 'package:empathy_exchange/widgets/message.dart';
+import 'package:empathy_exchange/lib/firebase.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 int _ppage = 0;
@@ -158,7 +160,10 @@ class _ChatPageState extends State<ChatPage> {
             label: const Text("New Chat"),
             icon: const Icon(Icons.add),
             onPressed: () {
-              setState(() {
+              setState(() async {
+                await FirebaseTools.listPush('users/${FirebaseAuth.instance.currentUser!.uid}/chats', {
+                  "withToken": "12345"
+                });
                 _chatPages.add(const _ChatTalkPage());
                 _chats.add(TextButton(
                   onPressed: () {

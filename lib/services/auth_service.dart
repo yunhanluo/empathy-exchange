@@ -22,6 +22,13 @@ class AuthService {
         email: email,
         password: password,
       );
+      if (! await FirebaseTools.exists('users/${result.user!.uid}')) {
+        await FirebaseTools.save('users/${result.user!.uid}', {
+          "email": result.user?.email,
+          "chats": [],
+          "pairToken": "12345"
+        });
+      }
       return result;
     } on FirebaseAuthException catch (e) {
       throw _handleAuthException(e);
@@ -38,7 +45,11 @@ class AuthService {
         email: email,
         password: password,
       );
-      FirebaseTools.save('users/${result.user?.uid}', {});
+      await FirebaseTools.save('users/${result.user!.uid}', {
+        "email": result.user?.email,
+        "chats": [],
+        "pairToken": "12345"
+      });
       return result;
     } on FirebaseAuthException catch (e) {
       throw _handleAuthException(e);
@@ -68,6 +79,13 @@ class AuthService {
       // Sign in to Firebase with the Google credential
       final UserCredential result =
           await _auth.signInWithCredential(credential);
+      if (! await FirebaseTools.exists('users/${result.user!.uid}')) {
+        await FirebaseTools.save('users/${result.user!.uid}', {
+          "email": result.user?.email,
+          "chats": [],
+          "pairToken": "12345"
+        });
+      }
       return result;
     } catch (e) {
       // Check if it's a user cancellation

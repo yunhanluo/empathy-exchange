@@ -8,7 +8,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'screens/login_screen.dart';
 import 'screens/profile_screen.dart';
 import 'services/profile_service.dart';
-import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -107,8 +106,8 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
-  String _newChatText = "New Chat";
-  String _otherUidHint = "Enter other user's uid...";
+  // String _newChatText = "New Chat";
+  // String _otherUidHint = "Enter other user's uid...";
 
   TextEditingController uidController = TextEditingController();
 
@@ -118,7 +117,7 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  void _showCreateChatDialog(BuildContext context) {
+  /*void _showCreateChatDialog(BuildContext context) {
     if (_newChatText != "New Chat") {
       _selectedIndex = 1;
       return;
@@ -191,7 +190,7 @@ class _HomePageState extends State<HomePage> {
         }
       }();
     });
-  }
+  }*/
 
   @override
   Widget build(BuildContext context) {
