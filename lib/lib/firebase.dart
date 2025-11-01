@@ -1,5 +1,3 @@
-import 'dart:collection';
-
 import 'package:firebase_database/firebase_database.dart';
 
 class FirebaseTools {
@@ -10,10 +8,10 @@ class FirebaseTools {
     await ref2.set(dict);
   }
 
-  static Future<Map<String, dynamic>> load(String path) async {
+  static Future<dynamic> load(String path) async {
     final snapshot = await ref.child(path).get();
     if (snapshot.exists) {
-      return Map<String,dynamic>.from(snapshot.value as LinkedHashMap);
+      return snapshot.value;
     } else {
       throw Exception("Firebase path not found: $path");
     }
