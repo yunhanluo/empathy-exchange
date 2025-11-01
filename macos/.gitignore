@@ -5,3 +5,17 @@
 # Xcode-related
 **/dgph
 **/xcuserdata/
+
+# Flutter/Dart
+.dart_tool/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

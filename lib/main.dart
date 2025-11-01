@@ -7,6 +7,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'screens/login_screen.dart';
 import 'screens/profile_screen.dart';
+import 'services/profile_service.dart';
+import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -39,8 +41,33 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class AuthWrapper extends StatelessWidget {
+class AuthWrapper extends StatefulWidget {
   const AuthWrapper({super.key});
+
+  @override
+  State<AuthWrapper> createState() => _AuthWrapperState();
+}
+
+class _AuthWrapperState extends State<AuthWrapper> {
+  final ProfileService _profileService = ProfileService();
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeUserDocument();
+  }
+
+  Future<void> _initializeUserDocument() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      try {
+        await _profileService.createOrUpdateUserDocument();
+        await _profileService.updateOnlineStatus(true);
+      } catch (e) {
+        // Handle error silently
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -58,6 +85,10 @@ class AuthWrapper extends StatelessWidget {
         }
 
         if (snapshot.hasData) {
+          // Initialize user document when user signs in
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _initializeUserDocument();
+          });
           return const HomePage();
         } else {
           return const LoginScreen();
@@ -131,10 +162,10 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _runOpenChat(String enteredUid) {
-    if (! mounted) {
-      return;
-    }
-    
+    bool success = false;
+
+    if (!mounted) return;
+
     setState(() {
       () async {
         String? myUid = FirebaseAuth.instance.currentUser?.uid;
@@ -144,7 +175,7 @@ class _HomePageState extends State<HomePage> {
           parts.sort();
           String path = parts.join('&');
 
-          if (! await FirebaseTools.exists("chats/$path")) {
+          if (!await FirebaseTools.exists("chats/$path")) {
             FirebaseTools.save("chats/$path", {
               "messages": [],
             });

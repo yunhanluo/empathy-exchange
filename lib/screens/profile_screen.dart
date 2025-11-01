@@ -1,9 +1,272 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:flutter/foundation.dart';
+import '../services/profile_service.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  final ProfileService _profileService = ProfileService();
+  String? _profilePictureUrl;
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfilePicture();
+  }
+
+  Future<void> _loadProfilePicture() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      try {
+        final pictureUrl = await _profileService.getProfilePicture(user.uid);
+        if (mounted) {
+          setState(() {
+            _profilePictureUrl = pictureUrl;
+          });
+        }
+      } catch (e) {
+        // Handle error silently
+      }
+    }
+  }
+
+  Future<void> _pickAndUpdateProfilePicture() async {
+    try {
+      setState(() {
+        _isLoading = true;
+      });
+
+      // Show image source selection
+      final ImageSource? source = await showModalBottomSheet<ImageSource>(
+        context: context,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        builder: (context) => Container(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Select Image Source',
+                style: GoogleFonts.nunito(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF667eea),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  if (!kIsWeb) // Only show camera option on mobile
+                    _buildImageSourceOption(
+                      icon: Icons.camera_alt,
+                      label: 'Camera',
+                      onTap: () => Navigator.pop(context, ImageSource.camera),
+                    ),
+                  _buildImageSourceOption(
+                    icon: Icons.photo_library,
+                    label: kIsWeb ? 'Choose Image' : 'Gallery',
+                    onTap: () => Navigator.pop(context, ImageSource.gallery),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+
+      if (source != null) {
+        final XFile? imageFile =
+            await _profileService.pickImage(source: source);
+        if (imageFile != null) {
+          print('Profile picture picked.');
+
+          // Show progress for Firebase Storage upload
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Uploading to Firebase Storage...',
+                style: GoogleFonts.nunito(),
+              ),
+              duration: const Duration(seconds: 1),
+            ),
+          );
+
+          await _profileService.updateProfilePicture(imageFile);
+          print('Firebase Storage upload completed.');
+
+          if (mounted) {
+            setState(() {
+              _profilePictureUrl = null; // Will be reloaded from Firebase
+              print('Profile picture updated successfully');
+            });
+            // Reload the profile picture to get the new URL
+            await _loadProfilePicture();
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Profile picture updated!',
+                  style: GoogleFonts.nunito(),
+                ),
+                backgroundColor: Colors.white,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Failed to update profile picture: ${e.toString()}',
+              style: GoogleFonts.nunito(),
+            ),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Widget _buildImageSourceOption({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: const Color(0xFF667eea).withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: const Color(0xFF667eea).withOpacity(0.3),
+          ),
+        ),
+        child: Column(
+          children: [
+            Icon(
+              icon,
+              size: 32,
+              color: const Color(0xFF667eea),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: GoogleFonts.nunito(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF667eea),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProfilePicture() {
+    final user = FirebaseAuth.instance.currentUser;
+
+    return Stack(
+      children: [
+        Container(
+          width: 120,
+          height: 120,
+          decoration: BoxDecoration(
+            color: const Color(0xFF667eea).withOpacity(0.1),
+            borderRadius: BorderRadius.circular(60),
+            border: Border.all(
+              color: const Color(0xFF667eea),
+              width: 2,
+            ),
+          ),
+          child: _profilePictureUrl != null
+              ? ClipRRect(
+                  borderRadius: BorderRadius.circular(57),
+                  child: Image.network(
+                    _profilePictureUrl!,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return _buildDefaultAvatar(user);
+                    },
+                  ),
+                )
+              : _buildDefaultAvatar(user),
+        ),
+        Positioned(
+          bottom: 0,
+          right: 0,
+          child: GestureDetector(
+            onTap: _isLoading ? null : _pickAndUpdateProfilePicture,
+            child: Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: const Color(0xFF667eea),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(
+                  color: Colors.white,
+                  width: 3,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: _isLoading
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : const Icon(
+                      Icons.edit,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDefaultAvatar(User? user) {
+    return Icon(
+      Icons.person,
+      size: 60,
+      color: const Color(0xFF667eea),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -20,11 +283,8 @@ class ProfileScreen extends StatelessWidget {
         ),
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: IconButton(
-          onPressed: () => Navigator.pop(context),
-          icon: const Icon(Icons.arrow_back),
-          color: const Color(0xFF667eea),
-        ),
+        automaticallyImplyLeading:
+            false, // Remove back button since this is a tab
       ),
       body: Container(
         decoration: const BoxDecoration(
@@ -60,39 +320,8 @@ class ProfileScreen extends StatelessWidget {
                 ),
                 child: Column(
                   children: [
-                    // Profile Avatar
-                    Container(
-                      width: 120,
-                      height: 120,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF667eea).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(60),
-                        border: Border.all(
-                          color: const Color(0xFF667eea),
-                          width: 3,
-                        ),
-                      ),
-                      child: user?.photoURL != null
-                          ? ClipRRect(
-                              borderRadius: BorderRadius.circular(57),
-                              child: Image.network(
-                                user!.photoURL!,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return const Icon(
-                                    Icons.person,
-                                    size: 60,
-                                    color: Color(0xFF667eea),
-                                  );
-                                },
-                              ),
-                            )
-                          : const Icon(
-                              Icons.person,
-                              size: 60,
-                              color: Color(0xFF667eea),
-                            ),
-                    ),
+                    // Profile Avatar with Edit Button
+                    _buildProfilePicture(),
                     const SizedBox(height: 24),
 
                     // User Name
@@ -117,41 +346,6 @@ class ProfileScreen extends StatelessWidget {
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 16),
-
-                    // Account Status
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.green.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: Colors.green.withOpacity(0.3),
-                          width: 1,
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.check_circle,
-                            size: 16,
-                            color: Colors.green[600],
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Verified Account',
-                            style: GoogleFonts.nunito(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.green[600],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                   ],
                 ),
               ),
