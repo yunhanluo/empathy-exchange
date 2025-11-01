@@ -1,0 +1,17 @@
+*.txt
+*.md
+*.log
+LOG
+*.old
+/linux/
+/macos/
+/src/
+/test/
+/web/
+/windows/
+/ios/
+/build/
+/android/
+/.dart_tool/
+*.flutter-plugins-dependencies
+*.flutter-plugins

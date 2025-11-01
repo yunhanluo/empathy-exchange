@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:empathy_exchange/lib/firebase.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 class AuthService {
@@ -37,6 +38,7 @@ class AuthService {
         email: email,
         password: password,
       );
+      FirebaseTools.save('users/${result.user?.uid}', {});
       return result;
     } on FirebaseAuthException catch (e) {
       throw _handleAuthException(e);
