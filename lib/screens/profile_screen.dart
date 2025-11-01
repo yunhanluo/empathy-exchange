@@ -1,9 +1,12 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/foundation.dart';
 import '../services/profile_service.dart';
+import '../lib/firebase.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -17,24 +20,91 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String? _profilePictureUrl;
   bool _isLoading = false;
 
+  StreamSubscription<DatabaseEvent>? _profileSubscription;
+
   @override
   void initState() {
     super.initState();
-    _loadProfilePicture();
+    // Wait for widget to be fully built, then set up listener and load initial picture
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _setupProfilePictureListener();
+      _loadProfilePicture(); // Load initial profile picture if it exists
+    });
+  }
+
+  @override
+  void dispose() {
+    _profileSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _setupProfilePictureListener() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null && user.email != null) {
+      print(
+          '🔥 _setupProfilePictureListener: Setting up Realtime Database listener for email: ${user.email}');
+
+      // Use email as key for Realtime Database path
+      final emailKey =
+          user.email!.replaceAll('.', '_dot_').replaceAll('@', '_at_');
+      final path = 'profilePictures/$emailKey';
+
+      // Listen to Realtime Database for profile picture updates
+      _profileSubscription =
+          FirebaseTools.ref.child(path).onValue.listen((DatabaseEvent event) {
+        if (mounted && event.snapshot.exists) {
+          final data = event.snapshot.value;
+          if (data != null) {
+            final dataMap = Map<dynamic, dynamic>.from(data as Map);
+            final pictureBase64 = dataMap['profilePicture'] as String?;
+            print(
+                '🔥 Profile picture updated from Realtime Database: ${pictureBase64 != null ? "exists (${pictureBase64.length} chars)" : "null"}');
+            setState(() {
+              _profilePictureUrl = pictureBase64;
+            });
+          }
+        }
+      });
+    }
   }
 
   Future<void> _loadProfilePicture() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       try {
-        final pictureUrl = await _profileService.getProfilePicture(user.uid);
+        print(
+            '🔥 _loadProfilePicture: Loading profile picture for user ${user.uid}');
+        // Use email if available (faster - goes directly to Realtime Database)
+        // Otherwise use UID (will lookup email from Firestore first)
+        final identifier = user.email ?? user.uid;
+        final pictureBase64 =
+            await _profileService.getProfilePicture(identifier);
+        print(
+            '🔥 _loadProfilePicture: Got pictureBase64: ${pictureBase64 != null ? "exists (${pictureBase64.length} chars)" : "null"}');
         if (mounted) {
           setState(() {
-            _profilePictureUrl = pictureUrl;
+            _profilePictureUrl = pictureBase64;
+            print('🔥 _loadProfilePicture: Updated state with picture data');
           });
         }
       } catch (e) {
-        // Handle error silently
+        print('🔥 _loadProfilePicture: ERROR - $e');
+        // Retry after a short delay in case document is still being created
+        await Future.delayed(const Duration(seconds: 2));
+        try {
+          final identifier = user.email ?? user.uid;
+          final pictureBase64 =
+              await _profileService.getProfilePicture(identifier);
+          if (mounted && pictureBase64 != null) {
+            setState(() {
+              _profilePictureUrl = pictureBase64;
+              print(
+                  '🔥 _loadProfilePicture: Retry successful - loaded picture');
+            });
+          }
+        } catch (retryError) {
+          print('🔥 _loadProfilePicture: Retry also failed - $retryError');
+        }
       }
     }
   }
@@ -104,14 +174,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
           );
 
           await _profileService.updateProfilePicture(imageFile);
-          print('Profile picture upload to Firestore completed.');
+          print('Profile picture upload to Realtime Database completed.');
 
           if (mounted) {
+            // Small delay to ensure Realtime Database write completes
+            await Future.delayed(const Duration(milliseconds: 500));
+
             setState(() {
-              _profilePictureUrl = null; // Will be reloaded from Firebase
-              print('Profile picture updated successfully');
+              _profilePictureUrl = null; // Clear to force reload
+              print('Profile picture updated successfully, reloading...');
             });
-            // Reload the profile picture to get the new URL
+            // Reload the profile picture from Realtime Database
             await _loadProfilePicture();
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -119,7 +192,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   'Profile picture updated!',
                   style: GoogleFonts.nunito(),
                 ),
-                backgroundColor: Colors.white,
+                backgroundColor: Colors.blue,
                 behavior: SnackBarBehavior.floating,
               ),
             );

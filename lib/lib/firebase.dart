@@ -32,7 +32,7 @@ class FirebaseTools {
   }
 
   static void initialize() async {
-    if (! await exists("chats")) {
+    if (!await exists("chats")) {
       save("chats", {});
     }
   }

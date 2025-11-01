@@ -22,14 +22,15 @@ class ProfilePictureWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final ProfileService profileService = ProfileService();
     final user = FirebaseAuth.instance.currentUser;
-    final targetUserId = userId ?? user?.uid;
+    // Prefer email over UID (email is used as key in Realtime Database)
+    final identifier = userId ?? user?.email ?? user?.uid;
 
-    if (targetUserId == null) {
+    if (identifier == null) {
       return _buildDefaultAvatar();
     }
 
     return FutureBuilder<String?>(
-      future: profileService.getProfilePicture(targetUserId),
+      future: profileService.getProfilePicture(identifier),
       builder: (context, snapshot) {
         if (snapshot.hasData && snapshot.data != null) {
           return _buildProfilePicture(
