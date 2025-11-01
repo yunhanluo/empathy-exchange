@@ -1,5 +1,6 @@
 import 'package:empathy_exchange/lib/firebase.dart';
 import 'package:empathy_exchange/screens/chat_screen.dart';
+import 'package:empathy_exchange/widgets/material.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -36,18 +37,7 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Empathy Exchange',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF667eea),
-        ),
-        textTheme: GoogleFonts.nunitoTextTheme(),
-        useMaterial3: true,
-      ),
-      home: const AuthWrapper(),
-      debugShowCheckedModeBanner: false,
-    );
+    return materialAppInstance(context, const AuthWrapper());
   }
 }
 
@@ -129,6 +119,11 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _showCreateChatDialog(BuildContext context) {
+    if (_newChatText != "New Chat") {
+      _selectedIndex = 1;
+      return;
+    }
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -169,36 +164,33 @@ class _HomePageState extends State<HomePage> {
   void _runOpenChat(String enteredUid) {
     bool success = false;
 
-    if (! mounted) return;
-    
+    if (!mounted) return;
+
     setState(() {
       () async {
-        if (_newChatText != "Open Chat") {
-          String? myUid = FirebaseAuth.instance.currentUser?.uid;
+        String? myUid = FirebaseAuth.instance.currentUser?.uid;
 
-          if (myUid != null) {
-            List<String> parts = [myUid, enteredUid];
-            parts.sort();
-            String path = parts.join('&');
+        if (myUid != null) {
+          List<String> parts = [myUid, enteredUid];
+          parts.sort();
+          String path = parts.join('&');
 
-            if (! await FirebaseTools.exists("chats/$path")) {
-              FirebaseTools.save("chats/$path", {
-                "messages": [],
-              });
-            }
-
-            _newChatText = "Open Chat";
-            _selectedIndex = 1;
-
-            success = true;
+          if (!await FirebaseTools.exists("chats/$path")) {
+            FirebaseTools.save("chats/$path", {
+              "messages": [],
+            });
           }
+
+          _newChatText = "Open Chat";
+          _selectedIndex = 1;
+
+          if (mounted) Navigator.of(context).pop();
+        } else {
+          uidController.clear();
+          _otherUidHint = "Try again.";
         }
       }();
     });
-
-    if (success) {
-      Navigator.of(context).pop();
-    }
   }
 
   @override
@@ -277,7 +269,7 @@ class _HomePageState extends State<HomePage> {
       case 0:
         return _buildHomeTab();
       case 1:
-        return _buildChatTab();
+        return _buildChatSelectTab();
       case 2:
         return _buildProfileTab();
       default:
@@ -343,21 +335,13 @@ class _HomePageState extends State<HomePage> {
                 ],
               ),
             ),
-            const SizedBox(height: 20), // Added SizedBox for padding
-            FloatingActionButton.extended(
-              label: Text(_newChatText),
-              icon: const Icon(Icons.add),
-              onPressed: () {
-                _showCreateChatDialog(context);
-              },
-            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildChatTab() {
+  Widget _buildChatSelectTab() {
     /*return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
