@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/foundation.dart';
 
@@ -10,46 +9,28 @@ class ProfileService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final ImagePicker _picker = ImagePicker();
 
-  final FirebaseStorage _storage = FirebaseStorage.instance;
-
-  // Upload image to Firebase Storage
-  Future<String> uploadProfilePicture(Uint8List imageBytes) async {
-    final user = _auth.currentUser;
-    if (user == null) throw Exception('User not authenticated');
-
-    final ref =
-        _storage.ref().child('profile_pictures').child('${user.uid}.jpg');
-
-    final uploadTask = ref.putData(imageBytes);
-    final snapshot = await uploadTask;
-    return await snapshot.ref.getDownloadURL();
-  }
-
-  // Update profile with image URL
+  // Update profile picture with base64
   Future<void> updateProfilePicture(XFile imageFile) async {
-    print('🔥 updateProfilePicture: Starting Firebase Storage upload...');
-    final user = _auth.currentUser;
-    if (user == null) throw Exception('User not authenticated');
-
-    print('🔥 updateProfilePicture: Reading image bytes...');
-    final bytes = await imageFile.readAsBytes();
-    print('🔥 updateProfilePicture: Image size: ${bytes.length} bytes');
-
-    print('🔥 updateProfilePicture: Uploading to Firebase Storage...');
-    String downloadUrl;
     try {
-      downloadUrl = await uploadProfilePicture(bytes);
-      print('🔥 updateProfilePicture: Got download URL: $downloadUrl');
-    } catch (e) {
-      print('🔥 updateProfilePicture: Firebase Storage upload failed: $e');
-      throw Exception('Firebase Storage upload failed: $e');
-    }
+      print('🔥 updateProfilePicture: Starting base64 conversion...');
+      final user = _auth.currentUser;
+      if (user == null) throw Exception('User not authenticated');
 
-    print('🔥 updateProfilePicture: Updating Firestore with URL...');
-    await _firestore.collection('users').doc(user.uid).update({
-      'profilePictureUrl': downloadUrl,
-    });
-    print('🔥 updateProfilePicture: Firebase Storage upload completed!');
+      print('🔥 updateProfilePicture: Converting image to base64...');
+      final base64Image = await imageToBase64(imageFile);
+      print(
+          '🔥 updateProfilePicture: Base64 conversion complete. Length: ${base64Image.length}');
+
+      print('🔥 updateProfilePicture: Updating Firestore with base64...');
+      await _firestore.collection('users').doc(user.uid).update({
+        'profilePicture': base64Image,
+        'lastUpdated': FieldValue.serverTimestamp(),
+      });
+      print('🔥 updateProfilePicture: Firestore update completed!');
+    } catch (e) {
+      print('🔥 updateProfilePicture: ERROR - $e');
+      throw Exception('Failed to update profile picture: $e');
+    }
   }
 
   // Get user profile data
@@ -159,8 +140,7 @@ class ProfileService {
 
       if (doc.exists) {
         Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-        return data[
-            'profilePictureUrl']; // Changed from 'profilePicture' to 'profilePictureUrl'
+        return data['profilePicture']; // Returns base64 string
       }
       return null;
     } catch (e) {

@@ -92,11 +92,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         if (imageFile != null) {
           print('Profile picture picked.');
 
-          // Show progress for Firebase Storage upload
+          // Show progress for Firestore upload
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                'Uploading to Firebase Storage...',
+                'Uploading to Firestore...',
                 style: GoogleFonts.nunito(),
               ),
               duration: const Duration(seconds: 1),
@@ -104,7 +104,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           );
 
           await _profileService.updateProfilePicture(imageFile);
-          print('Firebase Storage upload completed.');
+          print('Profile picture upload to Firestore completed.');
 
           if (mounted) {
             setState(() {
@@ -203,11 +203,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
               width: 2,
             ),
           ),
-          child: _profilePictureUrl != null
+          child: _profilePictureUrl != null && _profilePictureUrl!.isNotEmpty
               ? ClipRRect(
                   borderRadius: BorderRadius.circular(57),
-                  child: Image.network(
-                    _profilePictureUrl!,
+                  child: Image.memory(
+                    _profileService.base64ToImageBytes(_profilePictureUrl!),
                     fit: BoxFit.cover,
                     errorBuilder: (context, error, stackTrace) {
                       return _buildDefaultAvatar(user);

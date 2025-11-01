@@ -52,6 +52,9 @@ dependencies:
   # Image picker and base64 encoding
   image_picker: ^1.1.2
   convert: ^3.1.1
+  
+  # HTTP client for API calls
+  http: ^1.2.0
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
