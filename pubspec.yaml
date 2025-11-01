@@ -41,6 +41,8 @@ dependencies:
   cloud_functions: ^5.1.3
   firebase_database: ^11.3.10
   
+  uid: ^0.0.2
+  
   # Google Sign-In
   google_sign_in: ^6.2.1
   
