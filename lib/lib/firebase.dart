@@ -1,7 +1,7 @@
 import 'package:firebase_database/firebase_database.dart';
 
 class FirebaseTools {
-  static final DatabaseReference ref = FirebaseDatabase.instance.ref();
+  static final DatabaseReference ref = FirebaseDatabase.instance.ref('users');
 
   static Future<void> save(String path, Map<String, dynamic> dict) async {
     final DatabaseReference ref2 = ref.child(path);
