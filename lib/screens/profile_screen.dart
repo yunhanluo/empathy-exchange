@@ -476,8 +476,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       title: 'Help & Support',
                       subtitle: 'Get help and contact support',
                       onTap: () {
-                        // TODO: Navigate to help
-                        _showComingSoon(context);
+                        _showHelpAndSupport(context);
                       },
                     ),
                     _buildDivider(),
@@ -486,8 +485,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       title: 'About',
                       subtitle: 'App version and information',
                       onTap: () {
-                        // TODO: Navigate to about
-                        _showComingSoon(context);
+                        _showAboutApp(context);
                       },
                     ),
                   ],
@@ -596,6 +594,119 @@ class _ProfileScreenState extends State<ProfileScreen> {
       margin: const EdgeInsets.symmetric(horizontal: 20),
       height: 1,
       color: Colors.grey[200],
+    );
+  }
+
+  Widget _buildSupportRow(String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 70,
+          child: Text(
+            label,
+            style: GoogleFonts.nunito(
+              fontSize: 16,
+              color: Colors.grey[700],
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: GoogleFonts.nunito(
+              fontSize: 16,
+              color: Colors.grey[800],
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showHelpAndSupport(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'Help & Support',
+          style: GoogleFonts.nunito(
+            fontWeight: FontWeight.w700,
+            color: const Color(0xFF667eea),
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSupportRow('Email:', 'empathy@kindness.com'),
+            const SizedBox(height: 12),
+            _buildSupportRow('Website:',
+                'https://www.ai.gov/initiatives/presidential-challenge'),
+            const SizedBox(height: 12),
+            _buildSupportRow('Phone:', '+1 (630)-393-3930'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'OK',
+              style: GoogleFonts.nunito(
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF667eea),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAboutApp(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'Information About the App',
+          style: GoogleFonts.nunito(
+            fontWeight: FontWeight.w700,
+            color: const Color(0xFF667eea),
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSupportRow('Version:', 'Alpha'),
+            const SizedBox(height: 24),
+            _buildSupportRow('Story:',
+                '''Empathy Exchange was created in 2025 for the Presidential AI Challenge. It aims to provide a platform for safe, constructive, AI-guided conversations. Use it for good, not evil.
+                Its goal is to create a platform for effective collaboration guided by AI.
+                Users chat with each other by entering each other's pairing tokens, which can be discovered in the ___, and chatting. 
+                However, our AI is there to help the converstation stay on track.
+                Empathy Exchange is 100% free to use and open source.
+                Enjoy connecting with empathy.
+                '''),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'OK',
+              style: GoogleFonts.nunito(
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF667eea),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
