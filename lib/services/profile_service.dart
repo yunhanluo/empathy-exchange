@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/foundation.dart';
+import '../lib/firebase.dart';
 
 class ProfileService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -21,12 +22,21 @@ class ProfileService {
       print(
           '🔥 updateProfilePicture: Base64 conversion complete. Length: ${base64Image.length}');
 
-      print('🔥 updateProfilePicture: Updating Firestore with base64...');
-      await _firestore.collection('users').doc(user.uid).update({
+      if (user.email == null) throw Exception('User email is null');
+
+      // Store profile picture in Realtime Database using email as key
+      print(
+          '🔥 updateProfilePicture: Storing in Realtime Database with email: ${user.email}');
+      final emailKey =
+          user.email!.replaceAll('.', '_dot_').replaceAll('@', '_at_');
+      final path = 'profilePictures/$emailKey';
+
+      await FirebaseTools.update(path, {
         'profilePicture': base64Image,
-        'lastUpdated': FieldValue.serverTimestamp(),
+        'email': user.email!,
+        'lastUpdated': DateTime.now().millisecondsSinceEpoch,
       });
-      print('🔥 updateProfilePicture: Firestore update completed!');
+      print('🔥 updateProfilePicture: Realtime Database update completed!');
     } catch (e) {
       print('🔥 updateProfilePicture: ERROR - $e');
       throw Exception('Failed to update profile picture: $e');
@@ -132,18 +142,77 @@ class ProfileService {
     return base64Decode(base64String);
   }
 
-  // Get profile picture URL from Firebase Storage
-  Future<String?> getProfilePicture(String userId) async {
+  // Get profile picture from Realtime Database using email
+  Future<String?> getProfilePicture(String identifier) async {
     try {
-      DocumentSnapshot doc =
-          await _firestore.collection('users').doc(userId).get();
+      String? email;
 
-      if (doc.exists) {
-        Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-        return data['profilePicture']; // Returns base64 string
+      // If identifier is an email, use it directly
+      if (identifier.contains('@')) {
+        email = identifier;
+      } else {
+        // Otherwise, it's a UID - get email from Firestore
+        print(
+            '🔥 getProfilePicture: Identifier is UID, fetching email from Firestore...');
+        final doc = await _firestore.collection('users').doc(identifier).get();
+        if (doc.exists) {
+          final data = doc.data() as Map<String, dynamic>?;
+          email = data?['email'] as String?;
+        }
       }
+
+      if (email == null) {
+        print(
+            '🔥 getProfilePicture: No email found for identifier: $identifier');
+        return null;
+      }
+
+      // Look up profile picture in Realtime Database using email
+      print(
+          '🔥 getProfilePicture: Looking up in Realtime Database for email: $email');
+      final emailKey = email.replaceAll('.', '_dot_').replaceAll('@', '_at_');
+      final path = 'profilePictures/$emailKey';
+
+      print('🔥 getProfilePicture: Path: $path');
+      print('🔥 getProfilePicture: Email key: $emailKey');
+
+      try {
+        print('🔥 getProfilePicture: Checking if path exists...');
+        final exists = await FirebaseTools.exists(path);
+        print('🔥 getProfilePicture: Path exists: $exists');
+
+        if (exists) {
+          print('🔥 getProfilePicture: Loading data from path...');
+          final data = await FirebaseTools.load(path);
+          print('🔥 getProfilePicture: Data keys: ${data.keys}');
+          print(
+              '🔥 getProfilePicture: Data: ${data.toString().substring(0, data.toString().length > 200 ? 200 : data.toString().length)}...');
+
+          final profilePicture = data['profilePicture'] as String?;
+          print(
+              '🔥 getProfilePicture: Profile picture found: ${profilePicture != null}, length: ${profilePicture?.length ?? 0}');
+
+          if (profilePicture != null && profilePicture.isNotEmpty) {
+            print(
+                '🔥 getProfilePicture: SUCCESS - Found profile picture in Realtime Database');
+            return profilePicture;
+          } else {
+            print('🔥 getProfilePicture: Profile picture is null or empty');
+          }
+        } else {
+          print(
+              '🔥 getProfilePicture: Path does not exist in Realtime Database');
+        }
+      } catch (e, stackTrace) {
+        print('🔥 getProfilePicture: Realtime Database error: $e');
+        print('🔥 getProfilePicture: Stack trace: $stackTrace');
+      }
+
+      print(
+          '🔥 getProfilePicture: No profile picture found in Realtime Database');
       return null;
     } catch (e) {
+      print('🔥 getProfilePicture: ERROR - $e');
       throw Exception('Failed to get profile picture: $e');
     }
   }
