@@ -23,8 +23,8 @@ class AuthService {
         email: email,
         password: password,
       );
-      if (! await FirebaseTools.exists('users/${result.user!.uid}')) {
-        await FirebaseTools.save('users/${result.user!.uid}', {
+      if (! await FirebaseTools.exists(result.user!.uid)) {
+        await FirebaseTools.save(result.user!.uid, {
           "email": result.user?.email,
           "chats": [],
           "pairToken": UId.getId()
@@ -46,7 +46,7 @@ class AuthService {
         email: email,
         password: password,
       );
-      await FirebaseTools.save('users/${result.user!.uid}', {
+      await FirebaseTools.save(result.user!.uid, {
         "email": result.user?.email,
         "chats": [],
         "pairToken": UId.getId()
@@ -80,8 +80,8 @@ class AuthService {
       // Sign in to Firebase with the Google credential
       final UserCredential result =
           await _auth.signInWithCredential(credential);
-      if (! await FirebaseTools.exists('users/${result.user!.uid}')) {
-        await FirebaseTools.save('users/${result.user!.uid}', {
+      if (! await FirebaseTools.exists(result.user!.uid)) {
+        await FirebaseTools.save(result.user!.uid, {
           "email": result.user?.email,
           "chats": [],
           "pairToken": UId.getId()

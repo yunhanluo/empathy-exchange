@@ -143,41 +143,33 @@ class _ChatPageState extends State<ChatPage> {
 
     setState(() {
       () async {
-        String myToken = await FirebaseTools.load(
-            'users/${FirebaseAuth.instance.currentUser!.uid}/pairToken');
+        String myToken = await FirebaseTools.load('${FirebaseAuth.instance.currentUser!.uid}/pairToken');
 
         List<String> parts = [myToken, enteredUid];
         parts.sort();
         String path = parts.join('&');
 
         try {
-          Map chatMap = await FirebaseTools.load(
-              'users/${FirebaseAuth.instance.currentUser!.uid}/chats');
-          for (Map<String, dynamic> chat in chatMap.values) {
-            if (chat["withToken"] == enteredUid) {
+          JSArray chatList = await FirebaseTools.load(
+              '${FirebaseAuth.instance.currentUser!.uid}/chats');
+          for (JSAny? chat in chatList.toDart) {
+            if ((chat.dartify() as Map)["withToken"] == enteredUid) {
+              print("exists already");
               if (mounted) Navigator.of(context).pop();
               return;
             }
           }
-
-          await FirebaseTools.listPush(
-              'users/${FirebaseAuth.instance.currentUser!.uid}/chats', {
-            "withToken": uidController.text,
-            "fullToken": path,
-            "data": [],
-          });
         } catch (e) {
-          await FirebaseTools.update(
-              'users/${FirebaseAuth.instance.currentUser!.uid}', {
-            "chats": [
-              {
-                "withToken": uidController.text,
-                "fullToken": path,
-                "data": [],
-              }
-            ]
-          });
+          if (mounted) Navigator.of(context).pop();
+          return;
         }
+
+        await FirebaseTools.listPush(
+            '${FirebaseAuth.instance.currentUser!.uid}/chats', {
+          "withToken": uidController.text,
+          "fullToken": path,
+          "data": [],
+        });
 
         if (mounted) Navigator.of(context).pop();
 
@@ -189,6 +181,7 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   void _addChatTalkPage(String euid) {
+    print("new page");
     _chatPages.add(_ChatTalkPage(otherToken: euid));
     _chats.add(TextButton(
       onPressed: () {
@@ -232,15 +225,26 @@ class _ChatPageState extends State<ChatPage> {
 
   @override
   Widget build(BuildContext context) {
+    print("new build");
     setState(() {
       () async {
-        JSArray chatArray = await FirebaseTools.load(
-            'users/${FirebaseAuth.instance.currentUser!.uid}/chats');
+        // _chatPages.clear();
+        // _chats.clear();
+        
+        JSArray chatArray;
+        try {
+          chatArray = await FirebaseTools.load(
+            '${FirebaseAuth.instance.currentUser!.uid}/chats');
+        } catch (e) {
+          return;
+        }
         for (JSAny? chat in chatArray.toDart) {
           _addChatTalkPage((chat.dartify() as Map)["withToken"] as String);
         }
       }();
     });
+
+    setState(() {});
 
     return Stack(
       children: <Widget>[
@@ -280,7 +284,7 @@ class _ChatPageState extends State<ChatPage> {
                       title: const Text("Create New Chat"),
                       content: TextField(
                         decoration: const InputDecoration(
-                          hintText: "Enter other user's uid...",
+                          hintText: "Enter other user's pairing token...",
                         ),
                         onSubmitted: (String value) async {
                           _runOpenChat(value);
