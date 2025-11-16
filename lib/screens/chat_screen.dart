@@ -1,3 +1,5 @@
+import 'dart:js_interop';
+
 import 'package:empathy_exchange/widgets/material.dart';
 import 'package:empathy_exchange/widgets/message.dart';
 import 'package:empathy_exchange/lib/firebase.dart';
@@ -5,8 +7,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 int _ppage = 0;
-final List<Widget> _chats = <Widget>[];
-final List<Widget> _chatPages = <Widget>[];
 
 class ChatPage extends StatefulWidget {
   const ChatPage({super.key});
@@ -16,7 +16,9 @@ class ChatPage extends StatefulWidget {
 }
 
 class _ChatTalkPage extends StatefulWidget {
-  const _ChatTalkPage({super.key});
+  const _ChatTalkPage({super.key, required this.otherToken});
+
+  final String otherToken;
 
   @override
   State<_ChatTalkPage> createState() => _ChatTalkPageState();
@@ -97,8 +99,7 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
                 children: <Widget>[
                   Container(
                     padding: const EdgeInsets.only(left: 10, right: 5),
-                    width: MediaQuery.sizeOf(context).width -
-                        60,
+                    width: MediaQuery.sizeOf(context).width - 60,
                     child: TextField(
                       onSubmitted: (String value) {
                         _send(value);
@@ -132,8 +133,115 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
 }
 
 class _ChatPageState extends State<ChatPage> {
+  TextEditingController uidController = TextEditingController();
+
+  final List<Widget> _chats = <Widget>[];
+  final List<Widget> _chatPages = <Widget>[];
+
+  void _runOpenChat(String enteredUid) {
+    if (!mounted) return;
+
+    setState(() {
+      () async {
+        String myToken = await FirebaseTools.load(
+            'users/${FirebaseAuth.instance.currentUser!.uid}/pairToken');
+
+        List<String> parts = [myToken, enteredUid];
+        parts.sort();
+        String path = parts.join('&');
+
+        try {
+          Map chatMap = await FirebaseTools.load(
+              'users/${FirebaseAuth.instance.currentUser!.uid}/chats');
+          for (Map<String, dynamic> chat in chatMap.values) {
+            if (chat["withToken"] == enteredUid) {
+              if (mounted) Navigator.of(context).pop();
+              return;
+            }
+          }
+
+          await FirebaseTools.listPush(
+              'users/${FirebaseAuth.instance.currentUser!.uid}/chats', {
+            "withToken": uidController.text,
+            "fullToken": path,
+            "data": [],
+          });
+        } catch (e) {
+          await FirebaseTools.update(
+              'users/${FirebaseAuth.instance.currentUser!.uid}', {
+            "chats": [
+              {
+                "withToken": uidController.text,
+                "fullToken": path,
+                "data": [],
+              }
+            ]
+          });
+        }
+
+        if (mounted) Navigator.of(context).pop();
+
+        _addChatTalkPage(enteredUid);
+      }();
+
+      setState(() {});
+    });
+  }
+
+  void _addChatTalkPage(String euid) {
+    _chatPages.add(_ChatTalkPage(otherToken: euid));
+    _chats.add(TextButton(
+      onPressed: () {
+        _ppage = _chats.length;
+        Navigator.push(context,
+            MaterialPageRoute<void>(builder: (context) => _chatPages[_ppage]));
+      },
+      style: TextButton.styleFrom(
+        padding: EdgeInsets.zero,
+        backgroundColor: Colors.white,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.zero, // Square corners
+        ),
+      ),
+      child: Container(
+        width: double.infinity, // Make the button fill the entire width
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(color: Colors.grey.shade300),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              "Chat ${_chats.length + 1}",
+              style: const TextStyle(fontSize: 16),
+              textAlign: TextAlign.left,
+            ),
+            const Icon(
+              Icons.arrow_forward_ios, // Right arrow icon
+              size: 16,
+              color: Colors.grey,
+            ),
+          ],
+        ),
+      ),
+    ));
+  }
+
   @override
   Widget build(BuildContext context) {
+    setState(() {
+      () async {
+        JSArray chatArray = await FirebaseTools.load(
+            'users/${FirebaseAuth.instance.currentUser!.uid}/chats');
+        for (JSAny? chat in chatArray.toDart) {
+          _addChatTalkPage((chat.dartify() as Map)["withToken"] as String);
+        }
+      }();
+    });
+
     return Stack(
       children: <Widget>[
         Container(
@@ -160,52 +268,44 @@ class _ChatPageState extends State<ChatPage> {
             label: const Text("New Chat"),
             icon: const Icon(Icons.add),
             onPressed: () {
-              setState(() async {
-                await FirebaseTools.listPush('users/${FirebaseAuth.instance.currentUser!.uid}/chats', {
-                  "withToken": "12345"
-                });
-                _chatPages.add(const _ChatTalkPage());
-                _chats.add(TextButton(
-                  onPressed: () {
-                    _ppage = _chats.length;
-                    Navigator.push(context,
-                        MaterialPageRoute<void>(builder: (context) => _chatPages[_ppage]));
-                  },
-                  style: TextButton.styleFrom(
-                    padding: EdgeInsets.zero,
-                    backgroundColor: Colors.white,
-                    shape: const RoundedRectangleBorder(
-                      borderRadius: BorderRadius.zero, // Square corners
-                    ),
-                  ),
-                  child: Container(
-                    width: double
-                        .infinity, // Make the button fill the entire width
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      border: Border(
-                        bottom: BorderSide(color: Colors.grey.shade300),
+              setState(() {
+                showDialog(
+                  context: context,
+                  builder: (BuildContext context) {
+                    return AlertDialog(
+                      backgroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          "Chat ${_chats.length + 1}",
-                          style: const TextStyle(fontSize: 16),
-                          textAlign: TextAlign.left,
+                      title: const Text("Create New Chat"),
+                      content: TextField(
+                        decoration: const InputDecoration(
+                          hintText: "Enter other user's uid...",
                         ),
-                        const Icon(
-                          Icons.arrow_forward_ios, // Right arrow icon
-                          size: 16,
-                          color: Colors.grey,
+                        onSubmitted: (String value) async {
+                          _runOpenChat(value);
+                        },
+                        controller: uidController,
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                          },
+                          child: const Text("Cancel"),
+                        ),
+                        TextButton(
+                          onPressed: () async {
+                            _runOpenChat(uidController.text);
+                          },
+                          child: const Text("Okay"),
                         ),
                       ],
-                    ),
-                  ),
-                ));
-                _chatPages.add(const _ChatTalkPage());
+                    );
+                  },
+                );
               });
+              setState(() {});
             },
           ),
         ),

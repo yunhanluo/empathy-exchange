@@ -106,91 +106,12 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
-  // String _newChatText = "New Chat";
-  // String _otherUidHint = "Enter other user's uid...";
-
-  TextEditingController uidController = TextEditingController();
 
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
     });
   }
-
-  /*void _showCreateChatDialog(BuildContext context) {
-    if (_newChatText != "New Chat") {
-      _selectedIndex = 1;
-      return;
-    }
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          title: const Text("Create New Chat"),
-          content: TextField(
-            decoration: InputDecoration(
-              hintText: _otherUidHint,
-            ),
-            onSubmitted: (String value) async {
-              _runOpenChat(value);
-            },
-            controller: uidController,
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text("Cancel"),
-            ),
-            TextButton(
-              onPressed: () async {
-                _runOpenChat(uidController.text);
-              },
-              child: const Text("Okay"),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _runOpenChat(String enteredUid) {
-    bool success = false;
-
-    if (!mounted) return;
-
-    setState(() {
-      () async {
-        String? myUid = FirebaseAuth.instance.currentUser?.uid;
-
-        if (myUid != null) {
-          List<String> parts = [myUid, enteredUid];
-          parts.sort();
-          String path = parts.join('&');
-
-          if (!await FirebaseTools.exists("chats/$path")) {
-            FirebaseTools.save("chats/$path", {
-              "messages": [],
-            });
-          }
-
-          _newChatText = "Open Chat";
-          _selectedIndex = 1;
-
-          if (mounted) Navigator.of(context).pop();
-        } else {
-          uidController.clear();
-          _otherUidHint = "Try again.";
-        }
-      }();
-    });
-  }*/
 
   @override
   Widget build(BuildContext context) {
