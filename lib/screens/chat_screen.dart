@@ -1,3 +1,4 @@
+import 'dart:ffi';
 import 'dart:js_interop';
 
 import 'package:empathy_exchange/widgets/material.dart';
@@ -143,37 +144,50 @@ class _ChatPageState extends State<ChatPage> {
 
     setState(() {
       () async {
-        String myToken = await FirebaseTools.load('${FirebaseAuth.instance.currentUser!.uid}/pairToken');
+        String myToken = await FirebaseTools.load(
+            '${FirebaseAuth.instance.currentUser!.uid}/pairToken');
 
         List<String> parts = [myToken, enteredUid];
         parts.sort();
         String path = parts.join('&');
 
+        String newPath = '${FirebaseAuth.instance.currentUser!.uid}/chats';
         try {
-          JSArray chatList = await FirebaseTools.load(
-              '${FirebaseAuth.instance.currentUser!.uid}/chats');
+          if (!await FirebaseTools.exists(newPath)) {
+            await FirebaseTools.update(FirebaseAuth.instance.currentUser!.uid, {
+              "chats": [{
+                "withToken": uidController.text,
+                "fullToken": path,
+                "data": [],
+              }]
+            });
+            if (mounted) Navigator.of(context).pop();
+            return;
+          }
+
+          JSArray chatList = await FirebaseTools.load(newPath);
           for (JSAny? chat in chatList.toDart) {
             if ((chat.dartify() as Map)["withToken"] == enteredUid) {
-              print("exists already");
               if (mounted) Navigator.of(context).pop();
               return;
             }
           }
+
+          List chatListTemp = chatList.toDart;
+          chatListTemp.add({
+            "withToken": uidController.text,
+            "fullToken": path,
+            "data": [],
+          });
+          await FirebaseTools.update(FirebaseAuth.instance.currentUser!.uid, {
+            "chats": chatListTemp
+          });
+
+          if (mounted) Navigator.of(context).pop();
         } catch (e) {
           if (mounted) Navigator.of(context).pop();
           return;
         }
-
-        await FirebaseTools.listPush(
-            '${FirebaseAuth.instance.currentUser!.uid}/chats', {
-          "withToken": uidController.text,
-          "fullToken": path,
-          "data": [],
-        });
-
-        if (mounted) Navigator.of(context).pop();
-
-        _addChatTalkPage(enteredUid);
       }();
 
       setState(() {});
@@ -181,13 +195,12 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   void _addChatTalkPage(String euid) {
-    print("new page");
     _chatPages.add(_ChatTalkPage(otherToken: euid));
     _chats.add(TextButton(
       onPressed: () {
         _ppage = _chats.length;
         Navigator.push(context,
-            MaterialPageRoute<void>(builder: (context) => _chatPages[_ppage]));
+            MaterialPageRoute<void>(builder: (context) => _chatPages[_ppage - 1]));
       },
       style: TextButton.styleFrom(
         padding: EdgeInsets.zero,
@@ -221,30 +234,35 @@ class _ChatPageState extends State<ChatPage> {
         ),
       ),
     ));
+    print(_chats.length + _chatPages.length);
+  }
+
+  void rebuildChats() async {
+    _chatPages.clear();
+    _chats.clear();
+
+    try {
+      JSArray chatArray = await FirebaseTools.load(
+          '${FirebaseAuth.instance.currentUser!.uid}/chats');
+      for (JSAny? chat in chatArray.toDart) {
+      _addChatTalkPage((chat.dartify() as Map)["withToken"] as String);
+    }
+    } catch (e) {
+      return;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    print("new build");
-    setState(() {
-      () async {
-        // _chatPages.clear();
-        // _chats.clear();
-        
-        JSArray chatArray;
-        try {
-          chatArray = await FirebaseTools.load(
-            '${FirebaseAuth.instance.currentUser!.uid}/chats');
-        } catch (e) {
-          return;
-        }
-        for (JSAny? chat in chatArray.toDart) {
-          _addChatTalkPage((chat.dartify() as Map)["withToken"] as String);
-        }
-      }();
-    });
-
-    setState(() {});
+    if (mounted) {
+      setState(() {
+        print("rebuild");
+        rebuildChats();
+        setState(() {
+          // print(_chats.length + _chatPages.length);
+        });
+      });
+    }
 
     return Stack(
       children: <Widget>[
@@ -288,6 +306,7 @@ class _ChatPageState extends State<ChatPage> {
                         ),
                         onSubmitted: (String value) async {
                           _runOpenChat(value);
+                          setState(() {});
                         },
                         controller: uidController,
                       ),
@@ -301,6 +320,7 @@ class _ChatPageState extends State<ChatPage> {
                         TextButton(
                           onPressed: () async {
                             _runOpenChat(uidController.text);
+                            setState(() {});
                           },
                           child: const Text("Okay"),
                         ),
@@ -309,7 +329,6 @@ class _ChatPageState extends State<ChatPage> {
                   },
                 );
               });
-              setState(() {});
             },
           ),
         ),
