@@ -19,6 +19,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final ProfileService _profileService = ProfileService();
   String? _profilePictureUrl;
   bool _isLoading = false;
+  String? _pairToken;
 
   StreamSubscription<DatabaseEvent>? _profileSubscription;
 
@@ -29,6 +30,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _setupProfilePictureListener();
       _loadProfilePicture(); // Load initial profile picture if it exists
+      _loadPairToken(); // Load pair token
     });
   }
 
@@ -105,6 +107,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
         } catch (retryError) {
           print('🔥 _loadProfilePicture: Retry also failed - $retryError');
         }
+      }
+    }
+  }
+
+  Future<void> _loadPairToken() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      try {
+        final pairToken =
+            await FirebaseTools.load('${user.uid}/pairToken') as String;
+        if (mounted) {
+          setState(() {
+            _pairToken = pairToken;
+          });
+        }
+      } catch (e) {
+        print('Error loading pair token: $e');
+        // Token might not exist yet, that's okay
       }
     }
   }
@@ -418,6 +438,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       textAlign: TextAlign.center,
                     ),
+                    const SizedBox(height: 8),
+                    // Pair Token
+                    if (_pairToken != null)
+                      Column(
+                        children: [
+                          Text(
+                            'Pairing Token:',
+                            style: GoogleFonts.nunito(
+                              fontSize: 16,
+                              color: Colors.grey[600],
+                              fontWeight: FontWeight.w500,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 4),
+                          SelectableText(
+                            _pairToken!,
+                            style: GoogleFonts.nunito(
+                              fontSize: 16,
+                              color: const Color(0xFF667eea),
+                              fontWeight: FontWeight.w600,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
                     const SizedBox(height: 16),
                   ],
                 ),
