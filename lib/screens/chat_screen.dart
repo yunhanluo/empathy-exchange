@@ -18,8 +18,8 @@ class ChatPage extends StatefulWidget {
 }
 
 class _ChatTalkPage extends StatefulWidget {
-  // ignore: unused_element_parameter
   const _ChatTalkPage(
+      // ignore: unused_element_parameter
       {super.key,
       required this.myToken,
       required this.otherToken,
@@ -86,10 +86,12 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
       setState(() {
         thisRef = FirebaseChatTools.ref.child('/${data.keys.elementAt(chatId)}/data');
         _subscription = thisRef?.onValue.listen((event) {
-          Map item = event.snapshot.children.last.value as Map;
-          if (item['sender'] != myToken) {
-            _messages.add(Message(item["text"], Sender.other));
-          }
+          setState(() {
+            Map item = event.snapshot.children.last.value as Map;
+            if (item['sender'] != myToken && item['sender'] != 'system') {
+              _messages.add(Message(item["text"], Sender.other));
+            }
+          });
         });
       });
     }();
