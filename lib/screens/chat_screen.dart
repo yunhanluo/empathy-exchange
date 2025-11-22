@@ -9,6 +9,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 
+import 'package:flutter/foundation.dart';
+import 'dart:html' as html;
+
 int _ppage = 0;
 
 class ChatPage extends StatefulWidget {
@@ -98,6 +101,8 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
             Map item = event.snapshot.children.last.value as Map;
             if (item['sender'] != myToken && item['sender'] != 'system') {
               _messages.add(Message(item["text"], Sender.other));
+              // My Changes Begin Here
+              _showNotification(item['text']);
             }
 
             _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
@@ -105,6 +110,26 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
         });
       });
     }();
+  }
+
+  Future<void> _showNotification(String messageText) async {
+    if (!kIsWeb) return;
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    try {
+      final userData = await FirebaseTools.load(user.uid);
+      if (userData['notificationEnabled'] != true) return;
+    } catch (e) {
+      return;
+    }
+    if (html.Notification.permission == 'default') {
+      await html.Notification.requestPermission();
+    }
+    if (html.Notification.permission == 'granted') {
+      html.Notification('New Message',
+          body: messageText, icon: '/icons/Icon-192.png');
+    }
   }
 
   void _send(String value) {
