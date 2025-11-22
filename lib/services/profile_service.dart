@@ -156,7 +156,7 @@ class ProfileService {
             '🔥 getProfilePicture: Identifier is UID, fetching email from Firestore...');
         final doc = await _firestore.collection('users').doc(identifier).get();
         if (doc.exists) {
-          final data = doc.data() as Map<String, dynamic>?;
+          final data = doc.data();
           email = data?['email'] as String?;
         }
       }
