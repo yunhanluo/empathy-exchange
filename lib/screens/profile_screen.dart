@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:flutter/foundation.dart';
 import '../services/profile_service.dart';
 import '../lib/firebase.dart';
+import 'dart:html' as html;
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -43,8 +44,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void _setupProfilePictureListener() {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null && user.email != null) {
-      print(
-          '🔥 _setupProfilePictureListener: Setting up Realtime Database listener for email: ${user.email}');
+      // _setupProfilePictureListener: Setting up Realtime Database listener for email: ${user.email}');
 
       // Use email as key for Realtime Database path
       final emailKey =
@@ -59,8 +59,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           if (data != null) {
             final dataMap = Map<dynamic, dynamic>.from(data as Map);
             final pictureBase64 = dataMap['profilePicture'] as String?;
-            print(
-                '🔥 Profile picture updated from Realtime Database: ${pictureBase64 != null ? "exists (${pictureBase64.length} chars)" : "null"}');
+
+            // Profile picture updated from Realtime Database: ${pictureBase64 != null ? "exists (${pictureBase64.length} chars)" : "null"}');
             setState(() {
               _profilePictureUrl = pictureBase64;
             });
@@ -74,23 +74,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       try {
-        print(
-            '🔥 _loadProfilePicture: Loading profile picture for user ${user.uid}');
+        // _loadProfilePicture: Loading profile picture for user ${user.uid}');
         // Use email if available (faster - goes directly to Realtime Database)
         // Otherwise use UID (will lookup email from Firestore first)
         final identifier = user.email ?? user.uid;
         final pictureBase64 =
             await _profileService.getProfilePicture(identifier);
-        print(
-            '🔥 _loadProfilePicture: Got pictureBase64: ${pictureBase64 != null ? "exists (${pictureBase64.length} chars)" : "null"}');
         if (mounted) {
           setState(() {
             _profilePictureUrl = pictureBase64;
-            print('🔥 _loadProfilePicture: Updated state with picture data');
+            //🔥 _loadProfilePicture: Updated state with picture data');
           });
         }
       } catch (e) {
-        print('🔥 _loadProfilePicture: ERROR - $e');
+        //🔥 _loadProfilePicture: ERROR - $e');
         // Retry after a short delay in case document is still being created
         await Future.delayed(const Duration(seconds: 2));
         try {
@@ -100,12 +97,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
           if (mounted && pictureBase64 != null) {
             setState(() {
               _profilePictureUrl = pictureBase64;
-              print(
-                  '🔥 _loadProfilePicture: Retry successful - loaded picture');
+
+              // _loadProfilePicture: Retry successful - loaded picture');
             });
           }
         } catch (retryError) {
-          print('🔥 _loadProfilePicture: Retry also failed - $retryError');
+          //🔥 _loadProfilePicture: Retry also failed - $retryError');
         }
       }
     }
@@ -123,7 +120,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           });
         }
       } catch (e) {
-        print('Error loading pair token: $e');
+        //Error loading pair token: $e');
         // Token might not exist yet, that's okay
       }
     }
@@ -180,7 +177,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         final XFile? imageFile =
             await _profileService.pickImage(source: source);
         if (imageFile != null) {
-          print('Profile picture picked.');
+          //Profile picture picked.');
 
           // Show progress for Firestore upload
           ScaffoldMessenger.of(context).showSnackBar(
@@ -194,7 +191,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           );
 
           await _profileService.updateProfilePicture(imageFile);
-          print('Profile picture upload to Realtime Database completed.');
+          //Profile picture upload to Realtime Database completed.');
 
           if (mounted) {
             // Small delay to ensure Realtime Database write completes
@@ -202,7 +199,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
             setState(() {
               _profilePictureUrl = null; // Clear to force reload
-              print('Profile picture updated successfully, reloading...');
+              //Profile picture updated successfully, reloading...');
             });
             // Reload the profile picture from Realtime Database
             await _loadProfilePicture();
@@ -513,7 +510,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       subtitle: 'Manage your notification preferences',
                       onTap: () {
                         // TODO: Navigate to notification settings
-                        _showComingSoon(context);
+                        _showNotificationSettings(context);
                       },
                     ),
                     _buildDivider(),
@@ -672,6 +669,51 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  bool _notificationEnabled = false;
+
+  void _showNotificationSettings(BuildContext context) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      final userData = await FirebaseTools.load(user.uid);
+      _notificationEnabled = userData['notificationEnabled'] ?? false;
+    } catch (e) {
+      _notificationEnabled = false;
+    }
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Notification Settings'),
+          content: SwitchListTile(
+            title: const Text('Enable Notifications'),
+            value: _notificationEnabled,
+            onChanged: (value) async {
+              setDialogState(() {
+                _notificationEnabled = value;
+              });
+              // Save to Firebase
+              await FirebaseTools.update(user.uid, {
+                'notificationEnabled': value,
+              });
+              // Request browser permission if enabling
+              if (value && kIsWeb) {
+                await html.Notification.requestPermission();
+              }
+            },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Done'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showHelpAndSupport(BuildContext context) {
     showDialog(
       context: context,
@@ -730,14 +772,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
           children: [
             _buildSupportRow('Version:', 'Alpha'),
             const SizedBox(height: 24),
-            _buildSupportRow('Story:',
-                '''Empathy Exchange was created in 2025 for the Presidential AI Challenge. It aims to provide a platform for safe, constructive, AI-guided conversations. Use it for good, not evil.
-                Its goal is to create a platform for effective collaboration guided by AI.
-                Users chat with each other by entering each other's pairing tokens, which can be discovered in the ___, and chatting. 
-                However, our AI is there to help the converstation stay on track.
-                Empathy Exchange is 100% free to use and open source.
-                Enjoy connecting with empathy.
-                '''),
+            // Story section with better alignment
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Story:',
+                  style: GoogleFonts.nunito(
+                    fontSize: 16,
+                    color: Colors.grey[700],
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Empathy Exchange was created in 2025 for the Presidential AI Challenge. It aims to provide a platform for safe, constructive, AI-guided conversations. Use it for good, not evil.\n\n'
+                  'Its goal is to create a platform for effective collaboration guided by AI.\n'
+                  'Users chat with each other.\n'
+                  'However, our AI is there to help the conversation stay on track.\n'
+                  'Empathy Exchange is 100% free to use and open source.\n'
+                  'Enjoy connecting with empathy.',
+                  style: GoogleFonts.nunito(
+                    fontSize: 16,
+                    color: Colors.grey[800],
+                    fontWeight: FontWeight.w500,
+                    height: 1.5,
+                  ),
+                  textAlign: TextAlign.left,
+                ),
+              ],
+            ),
           ],
         ),
         actions: [
