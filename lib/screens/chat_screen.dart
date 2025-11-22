@@ -86,8 +86,9 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
       setState(() {
         thisRef = FirebaseChatTools.ref.child('/${data.keys.elementAt(chatId)}/data');
         _subscription = thisRef?.onValue.listen((event) {
-          for (final child in event.snapshot.children) {
-            print(child.value);
+          Map item = event.snapshot.children.last.value as Map;
+          if (item['sender'] != myToken) {
+            _messages.add(Message(item["text"], Sender.other));
           }
         });
       });
