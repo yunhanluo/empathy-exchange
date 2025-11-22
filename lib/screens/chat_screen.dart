@@ -51,13 +51,23 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
     super.initState();
 
     () async {
-      Map data = await FirebaseTools.load('${FirebaseAuth.instance.currentUser!.uid}/chats/$chatId/data');
-      setState(() {
-        for (JSAny item in data.values) {
-          Map message = item as Map;
-          _messages.add(Message(message["text"], message["sender"] == myToken ? Sender.self : Sender.other));
-        }
-      });
+      Map data = await FirebaseChatTools.load('/');
+      dynamic items = (data.values.elementAt(chatId) as Map)['data'];
+      if (items is Map) {
+        setState(() {
+          for (JSAny? item in items.values) {
+            Map message = item as Map;
+            _messages.add(Message(message["text"], message["sender"] == myToken ? Sender.self : Sender.other));
+          }
+        });
+      } else if (items is JSArray) {
+        setState(() {
+          for (JSAny? item in items.toDart) {
+            Map message = item as Map;
+            _messages.add(Message(message["text"], message["sender"] == myToken ? Sender.self : Sender.other));
+          }
+        });
+      }
     }();
   }
 
@@ -70,7 +80,9 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
     });
 
     () async {
-      await FirebaseTools.listPush('${FirebaseAuth.instance.currentUser!.uid}/chats/$chatId/data', {
+      Map data = await FirebaseChatTools.load('/');
+      String name = data.keys.elementAt(chatId);
+      await FirebaseChatTools.listPush('$name/data', {
         "sender": myToken,
         "text": value,
       });
@@ -182,47 +194,28 @@ class _ChatPageState extends State<ChatPage> {
         parts.sort();
         String path = parts.join('&');
 
-        String newPath = '${FirebaseAuth.instance.currentUser!.uid}/chats';
         try {
-          if (!await FirebaseTools.exists(newPath)) {
-            await FirebaseTools.update(FirebaseAuth.instance.currentUser!.uid, {
-              "chats": [
-                {
-                  "withToken": uidController.text,
-                  "fullToken": path,
-                  "data": [
-                    {"text": "This chat was created.", "sender": "system"},
-                  ],
-                }
-              ]
-            });
-            if (mounted) Navigator.of(context).pop();
-            rebuildChats();
-            return;
-          }
-
-          JSArray chatList = await FirebaseTools.load(newPath);
-          for (JSAny? chat in chatList.toDart) {
-            if ((chat.dartify() as Map)["withToken"] == enteredUid) {
+          Map chatList = await FirebaseChatTools.load('/');
+          for (JSAny? chat in chatList.values) {
+            if ((chat.dartify() as Map)["aToken"] == enteredUid) {
               if (mounted) Navigator.of(context).pop();
               return;
             }
           }
 
-          List chatListTemp = chatList.toDart;
-          chatListTemp.add({
-            "withToken": uidController.text,
+          await FirebaseChatTools.listPush('/', {
+            "aToken": uidController.text,
+            "bToken": myToken,
             "fullToken": path,
             "data": [
               {"text": "This chat was created.", "sender": "system"},
             ],
           });
-          await FirebaseTools.update(
-              FirebaseAuth.instance.currentUser!.uid, {"chats": chatListTemp});
 
           if (mounted) Navigator.of(context).pop();
           rebuildChats();
         } catch (e) {
+          print(e);
           if (mounted) Navigator.of(context).pop();
           rebuildChats();
           return;
@@ -287,15 +280,19 @@ class _ChatPageState extends State<ChatPage> {
     _chats.clear();
     _chatPages.clear();
 
-    if (await FirebaseTools.exists('${FirebaseAuth.instance.currentUser!.uid}/chats')) {
-      JSAny chatArray = await FirebaseTools.load(
-          '${FirebaseAuth.instance.currentUser!.uid}/chats');
+    JSAny chatArray = await FirebaseChatTools.load('/');
 
-      if (!mounted) return;
-      
-      for (JSAny? chat in (chatArray.dartify() as List)) {
-        _addChatTalkPage(await FirebaseTools.load(
-              '${FirebaseAuth.instance.currentUser!.uid}/pairToken'), (chat.dartify() as Map)["withToken"] as String);
+    if (!mounted) return;
+    
+    for (JSAny? chat in (chatArray.dartify() as Map).values) {
+      Map data = chat.dartify() as Map;
+      String myToken = await FirebaseTools.load('${FirebaseAuth.instance.currentUser!.uid}/pairToken');
+      if ((data['fullToken'] as String).split('&').contains(myToken)) {
+        if (data['aToken'] == myToken) {
+          _addChatTalkPage(myToken, data["bToken"] as String);
+        } else if (data['bToken'] == myToken) {
+          _addChatTalkPage(myToken, data["aToken"] as String);
+        }
       }
     }
 
