@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:js_interop';
 
 import 'package:empathy_exchange/widgets/material.dart';
 import 'package:empathy_exchange/widgets/message.dart';
 import 'package:empathy_exchange/lib/firebase.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 
 int _ppage = 0;
@@ -17,14 +19,19 @@ class ChatPage extends StatefulWidget {
 
 class _ChatTalkPage extends StatefulWidget {
   // ignore: unused_element_parameter
-  const _ChatTalkPage({super.key, required this.myToken, required this.otherToken, required this.chatId});
+  const _ChatTalkPage(
+      {super.key,
+      required this.myToken,
+      required this.otherToken,
+      required this.chatId});
 
   final String myToken;
   final String otherToken;
   final int chatId;
 
   @override
-  State<_ChatTalkPage> createState() => _ChatTalkPageState(chatId: chatId, myToken: myToken);
+  State<_ChatTalkPage> createState() =>
+      _ChatTalkPageState(chatId: chatId, myToken: myToken);
 }
 
 class _ChatTalkPageState extends State<_ChatTalkPage> {
@@ -38,10 +45,15 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
   final int chatId;
   final String myToken;
 
+  StreamSubscription<DatabaseEvent>? _subscription;
+  DatabaseReference? thisRef;
+
   @override
   void dispose() {
     _textController.dispose();
     _textFocus.dispose();
+
+    _subscription?.cancel();
 
     super.dispose();
   }
@@ -54,20 +66,31 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
       Map data = await FirebaseChatTools.load('/');
       dynamic items = (data.values.elementAt(chatId) as Map)['data'];
       if (items is Map) {
-        setState(() {
-          for (JSAny? item in items.values) {
+        for (JSAny? item in items.values) {
+          setState(() {
             Map message = item as Map;
-            _messages.add(Message(message["text"], message["sender"] == myToken ? Sender.self : Sender.other));
-          }
-        });
+            _messages.add(Message(message["text"],
+                message["sender"] == myToken ? Sender.self : Sender.other));
+          });
+        }
       } else if (items is JSArray) {
-        setState(() {
-          for (JSAny? item in items.toDart) {
+        for (JSAny? item in items.toDart) {
+          setState(() {
             Map message = item as Map;
-            _messages.add(Message(message["text"], message["sender"] == myToken ? Sender.self : Sender.other));
+            _messages.add(Message(message["text"],
+                message["sender"] == myToken ? Sender.self : Sender.other));
+          });
+        }
+      }
+
+      setState(() {
+        thisRef = FirebaseChatTools.ref.child('/${data.keys.elementAt(chatId)}/data');
+        _subscription = thisRef?.onValue.listen((event) {
+          for (final child in event.snapshot.children) {
+            print(child.value);
           }
         });
-      }
+      });
     }();
   }
 
@@ -127,6 +150,15 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
               padding: const EdgeInsets.only(bottom: 60),
               child: Column(
                 children: _messages,
+                // children: <Widget>[
+                //   StreamBuilder<DatabaseEvent>(stream: thisRef?.onValue, builder: (context, snapshot) {
+                //     if (snapshot.hasError) return const Message("An error occured.", Sender.other);
+                //     if (snapshot.connectionState == ConnectionState.waiting) return const CircularProgressIndicator();
+
+                //     final dynamic data = snapshot.data!.snapshot.value;
+                //     return Message("$data", Sender.other);
+                //   }),
+                // ],
               ),
             ))),
           ),
@@ -226,8 +258,9 @@ class _ChatPageState extends State<ChatPage> {
     });
   }
 
-  void _addChatTalkPage(String euid, String myToken)  {
-    _chatPages.add(_ChatTalkPage(myToken: myToken, otherToken: euid, chatId: _ppage));
+  void _addChatTalkPage(String euid, String myToken) {
+    _chatPages
+        .add(_ChatTalkPage(myToken: myToken, otherToken: euid, chatId: _ppage));
     _chats.add(TextButton(
       onPressed: () {
         _ppage = _chats.length;
@@ -283,10 +316,11 @@ class _ChatPageState extends State<ChatPage> {
     JSAny chatArray = await FirebaseChatTools.load('/');
 
     if (!mounted) return;
-    
+
     for (JSAny? chat in (chatArray.dartify() as Map).values) {
       Map data = chat.dartify() as Map;
-      String myToken = await FirebaseTools.load('${FirebaseAuth.instance.currentUser!.uid}/pairToken');
+      String myToken = await FirebaseTools.load(
+          '${FirebaseAuth.instance.currentUser!.uid}/pairToken');
       if ((data['fullToken'] as String).split('&').contains(myToken)) {
         if (data['aToken'] == myToken) {
           _addChatTalkPage(myToken, data["bToken"] as String);
