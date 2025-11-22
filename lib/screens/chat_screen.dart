@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:js_interop';
 
 import 'package:empathy_exchange/widgets/material.dart';
@@ -40,6 +41,8 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
   final _textController = TextEditingController();
   final _textFocus = FocusNode();
 
+  final _scrollController = ScrollController();
+
   final List<Widget> _messages = <Widget>[];
 
   final int chatId;
@@ -52,6 +55,8 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
   void dispose() {
     _textController.dispose();
     _textFocus.dispose();
+
+    _scrollController.dispose();
 
     _subscription?.cancel();
 
@@ -83,14 +88,19 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
         }
       }
 
+      _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+
       setState(() {
-        thisRef = FirebaseChatTools.ref.child('/${data.keys.elementAt(chatId)}/data');
+        thisRef =
+            FirebaseChatTools.ref.child('/${data.keys.elementAt(chatId)}/data');
         _subscription = thisRef?.onValue.listen((event) {
           setState(() {
             Map item = event.snapshot.children.last.value as Map;
             if (item['sender'] != myToken && item['sender'] != 'system') {
               _messages.add(Message(item["text"], Sender.other));
             }
+
+            _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
           });
         });
       });
@@ -148,22 +158,25 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
                 6 -
                 kBottomNavigationBarHeight,
             child: SafeArea(
-                child: SingleChildScrollView(
-                    child: Padding(
-              padding: const EdgeInsets.only(bottom: 60),
-              child: Column(
-                children: _messages,
-                // children: <Widget>[
-                //   StreamBuilder<DatabaseEvent>(stream: thisRef?.onValue, builder: (context, snapshot) {
-                //     if (snapshot.hasError) return const Message("An error occured.", Sender.other);
-                //     if (snapshot.connectionState == ConnectionState.waiting) return const CircularProgressIndicator();
+              child: SingleChildScrollView(
+                controller: _scrollController,
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 60),
+                  child: Column(
+                    children: _messages,
+                    // children: <Widget>[
+                    //   StreamBuilder<DatabaseEvent>(stream: thisRef?.onValue, builder: (context, snapshot) {
+                    //     if (snapshot.hasError) return const Message("An error occured.", Sender.other);
+                    //     if (snapshot.connectionState == ConnectionState.waiting) return const CircularProgressIndicator();
 
-                //     final dynamic data = snapshot.data!.snapshot.value;
-                //     return Message("$data", Sender.other);
-                //   }),
-                // ],
-              ),
-            ))),
+                    //     final dynamic data = snapshot.data!.snapshot.value;
+                    //     return Message("$data", Sender.other);
+                    //   }),
+                    // ],
+                  ),
+                ),
+              )
+            ),
           ),
           Align(
             alignment: Alignment.bottomLeft,
@@ -227,7 +240,7 @@ class _ChatPageState extends State<ChatPage> {
 
         List<String> parts = [myToken, enteredUid];
         parts.sort();
-        String path = parts.join('&');
+        String path = parts.join(' ');
 
         try {
           Map chatList = await FirebaseChatTools.load('/');
@@ -261,7 +274,11 @@ class _ChatPageState extends State<ChatPage> {
     });
   }
 
-  void _addChatTalkPage(String euid, String myToken) {
+  void _addChatTalkPage(String euid, String myToken) async {
+    final emailKey = euid.replaceAll('.', '_dot_').replaceAll('@', '_at_');
+
+    String pfp = await FirebaseTools.load('profilePictures/$emailKey/profilePicture');
+
     _chatPages
         .add(_ChatTalkPage(myToken: myToken, otherToken: euid, chatId: _ppage));
     _chats.add(TextButton(
@@ -290,6 +307,12 @@ class _ChatPageState extends State<ChatPage> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
+            Image.memory(
+              base64.decode(pfp.replaceAll(RegExp(r'\s'), '')),
+              width: 20,
+              height: 20,
+              fit: BoxFit.cover
+            ),
             Text(
               "Chat ${_chats.length + 1}",
               style: const TextStyle(fontSize: 16),
@@ -324,7 +347,7 @@ class _ChatPageState extends State<ChatPage> {
       Map data = chat.dartify() as Map;
       String myToken = await FirebaseTools.load(
           '${FirebaseAuth.instance.currentUser!.uid}/pairToken');
-      if ((data['fullToken'] as String).split('&').contains(myToken)) {
+      if ((data['fullToken'] as String).split(' ').contains(myToken)) {
         if (data['aToken'] == myToken) {
           _addChatTalkPage(myToken, data["bToken"] as String);
         } else if (data['bToken'] == myToken) {

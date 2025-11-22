@@ -1,7 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:empathy_exchange/lib/firebase.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:uid/uid.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -27,7 +26,7 @@ class AuthService {
         await FirebaseTools.save(result.user!.uid, {
           "email": result.user?.email,
           "chats": [],
-          "pairToken": UId.getId()
+          "pairToken": result.user?.email
         });
       }
       return result;
@@ -49,7 +48,7 @@ class AuthService {
       await FirebaseTools.save(result.user!.uid, {
         "email": result.user?.email,
         "chats": [],
-        "pairToken": UId.getId()
+        "pairToken": result.user?.email
       });
       return result;
     } on FirebaseAuthException catch (e) {
@@ -84,7 +83,7 @@ class AuthService {
         await FirebaseTools.save(result.user!.uid, {
           "email": result.user?.email,
           "chats": [],
-          "pairToken": UId.getId()
+          "pairToken": result.user?.email
         });
       }
       return result;
