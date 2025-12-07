@@ -59,8 +59,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final path = 'profilePictures/$emailKey';
 
       // Listen to Realtime Database for profile picture updates
-      _profileSubscription =
-          FirebaseUserTools.ref.child(path).onValue.listen((DatabaseEvent event) {
+      _profileSubscription = FirebaseUserTools.ref
+          .child(path)
+          .onValue
+          .listen((DatabaseEvent event) {
         if (mounted && event.snapshot.exists) {
           final data = event.snapshot.value;
           if (data != null) {
@@ -120,7 +122,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (user == null) return;
 
     try {
-      final data = await FirebaseTools.load(user.uid) as Map?;
+      final data = await FirebaseUserTools.load(user.uid) as Map?;
       if (data != null && mounted) {
         setState(() {
           _bio = data['bio'] as String?;
@@ -803,7 +805,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               final newBio = _bioController.text.trim();
               final newDisplayName = _displayNameController.text.trim();
               try {
-                await FirebaseTools.update(user.uid, {
+                await FirebaseUserTools.update(user.uid, {
                   'bio': newBio,
                   'displayName': newDisplayName,
                 });

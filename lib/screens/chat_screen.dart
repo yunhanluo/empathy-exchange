@@ -350,8 +350,6 @@ class _ChatPageState extends State<ChatPage> {
   void _addChatTalkPage(String euid, String myToken) async {
     final emailKey = myToken.replaceAll('.', '_dot_').replaceAll('@', '_at_');
 
-    String pfp =
-        await FirebaseTools.load('profilePictures/$emailKey/profilePicture');
     String pfp = await FirebaseUserTools.load(
         'profilePictures/$emailKey/profilePicture');
 
