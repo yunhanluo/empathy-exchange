@@ -80,14 +80,31 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
       Map data = await FirebaseChatTools.load('/');
       Map chat = data.values.elementAt(chatId) as Map;
       dynamic items = chat['data'];
+      
       final emailKey = ((chat['aToken'] == myToken ? chat['bToken'] : chat['aToken']) as String).replaceAll('.', '_dot_').replaceAll('@', '_at_');
       String pfp = await FirebaseUserTools.load('profilePictures/$emailKey/profilePicture');
+      Map uData = await FirebaseUserTools.load('/');
+      int karma = 0;
+      for (Map user in uData.values) {
+        if (user['pairToken'] == emailKey) {
+          dynamic karmaToParse = user['karma'];
+          if (karmaToParse is int) {
+            karma = karmaToParse;
+          } else if (karmaToParse is String) {
+            karma = int.parse(karma);
+          }
+
+          break;
+        }
+      }
+      
       if (items is Map) {
         for (JSAny? item in items.values) {
           setState(() {
             Map message = item as Map;
             _messages.add(Message(message["text"],
-                message["sender"] == myToken ? Sender.self : Sender.other, pfp));
+                message["sender"] == myToken ? Sender.self : Sender.other,
+                pfp));
           });
         }
       } else if (items is JSArray) {
@@ -95,7 +112,8 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
           setState(() {
             Map message = item as Map;
             _messages.add(Message(message["text"],
-                message["sender"] == myToken ? Sender.self : Sender.other, pfp));
+                message["sender"] == myToken ? Sender.self : Sender.other,
+                pfp));
           });
         }
       }
