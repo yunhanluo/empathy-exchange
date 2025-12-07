@@ -22,11 +22,12 @@ class AuthService {
         email: email,
         password: password,
       );
-      if (! await FirebaseTools.exists(result.user!.uid)) {
-        await FirebaseTools.save(result.user!.uid, {
+      if (! await FirebaseUserTools.exists(result.user!.uid)) {
+        await FirebaseUserTools.save(result.user!.uid, {
           "email": result.user?.email,
           "chats": [],
-          "pairToken": result.user?.email
+          "pairToken": result.user?.email,
+          "karma": 0
         });
       }
       return result;
@@ -45,10 +46,11 @@ class AuthService {
         email: email,
         password: password,
       );
-      await FirebaseTools.save(result.user!.uid, {
+      await FirebaseUserTools.save(result.user!.uid, {
         "email": result.user?.email,
         "chats": [],
-        "pairToken": result.user?.email
+        "pairToken": result.user?.email,
+        "karma": 0
       });
       return result;
     } on FirebaseAuthException catch (e) {
@@ -79,11 +81,12 @@ class AuthService {
       // Sign in to Firebase with the Google credential
       final UserCredential result =
           await _auth.signInWithCredential(credential);
-      if (! await FirebaseTools.exists(result.user!.uid)) {
-        await FirebaseTools.save(result.user!.uid, {
+      if (! await FirebaseUserTools.exists(result.user!.uid)) {
+        await FirebaseUserTools.save(result.user!.uid, {
           "email": result.user?.email,
           "chats": [],
-          "pairToken": result.user?.email
+          "pairToken": result.user?.email,
+          "karma": 0
         });
       }
       return result;

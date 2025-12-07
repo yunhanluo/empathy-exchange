@@ -3,7 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/foundation.dart';
-import '../lib/firebase.dart';
+import 'package:empathy_exchange/lib/firebase.dart';
 
 class ProfileService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -29,7 +29,7 @@ class ProfileService {
           user.email!.replaceAll('.', '_dot_').replaceAll('@', '_at_');
       final path = 'profilePictures/$emailKey';
 
-      await FirebaseTools.update(path, {
+      await FirebaseUserTools.update(path, {
         'profilePicture': base64Image,
         'email': user.email!,
         'lastUpdated': DateTime.now().millisecondsSinceEpoch,
@@ -173,12 +173,12 @@ class ProfileService {
 
       try {
         // getProfilePicture: Checking if path exists...');
-        final exists = await FirebaseTools.exists(path);
+        final exists = await FirebaseUserTools.exists(path);
         // getProfilePicture: Path exists: $exists');
 
         if (exists) {
           // getProfilePicture: Loading data from path...');
-          final data = await FirebaseTools.load(path);
+          final data = await FirebaseUserTools.load(path);
           // getProfilePicture: Data keys: ${data.keys}');
           // getProfilePicture: Data: ${data.toString().substring(0, data.toString().length > 200 ? 200 : data.toString().length)}...');
 
@@ -194,7 +194,7 @@ class ProfileService {
         } else {
           // getProfilePicture: Path does not exist in Realtime Database');
         }
-      } catch (e, stackTrace) {
+      } catch (e) {
         // getProfilePicture: Realtime Database error: $e');
         // getProfilePicture: Stack trace: $stackTrace');
       }

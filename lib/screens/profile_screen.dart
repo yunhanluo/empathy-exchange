@@ -53,7 +53,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       // Listen to Realtime Database for profile picture updates
       _profileSubscription =
-          FirebaseTools.ref.child(path).onValue.listen((DatabaseEvent event) {
+          FirebaseUserTools.ref.child(path).onValue.listen((DatabaseEvent event) {
         if (mounted && event.snapshot.exists) {
           final data = event.snapshot.value;
           if (data != null) {
@@ -113,7 +113,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (user != null) {
       try {
         final pairToken =
-            await FirebaseTools.load('${user.uid}/pairToken') as String;
+            await FirebaseUserTools.load('${user.uid}/pairToken') as String;
         if (mounted) {
           setState(() {
             _pairToken = pairToken;
@@ -676,7 +676,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (user == null) return;
 
     try {
-      final userData = await FirebaseTools.load(user.uid);
+      final userData = await FirebaseUserTools.load(user.uid);
       _notificationEnabled = userData['notificationEnabled'] ?? false;
     } catch (e) {
       _notificationEnabled = false;
@@ -694,7 +694,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 _notificationEnabled = value;
               });
               // Save to Firebase
-              await FirebaseTools.update(user.uid, {
+              await FirebaseUserTools.update(user.uid, {
                 'notificationEnabled': value,
               });
               // Request browser permission if enabling

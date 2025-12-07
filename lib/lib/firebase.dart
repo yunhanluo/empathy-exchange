@@ -1,6 +1,6 @@
 import 'package:firebase_database/firebase_database.dart';
 
-class FirebaseTools {
+class FirebaseUserTools {
   static final DatabaseReference ref = FirebaseDatabase.instance.ref('users');
 
   static Future<void> save(String path, Map<String, dynamic> dict) async {
@@ -31,11 +31,16 @@ class FirebaseTools {
     ref2.push().set(value);
   }
 
-  static void initialize() async {
-    if (!await exists("chats")) {
-      save("chats", {});
-    }
+  static Future<void> set(String path, dynamic value) async {
+    final DatabaseReference ref2 = ref.child(path);
+    ref2.set(value);
   }
+
+  // static void initialize() async {
+  //   if (!await exists("chats")) {
+  //     save("chats", {});
+  //   }
+  // }
 }
 
 
@@ -70,9 +75,14 @@ class FirebaseChatTools {
     ref2.push().set(value);
   }
 
-  static void initialize() async {
-    if (!await exists("chats")) {
-      save("chats", {});
-    }
+  static Future<void> set(String path, dynamic value) async {
+    final DatabaseReference ref2 = ref.child(path);
+    ref2.set(value);
   }
+
+  // static void initialize() async {
+  //   if (!await exists("chats")) {
+  //     save("chats", {});
+  //   }
+  // }
 }

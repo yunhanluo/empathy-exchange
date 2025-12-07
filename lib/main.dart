@@ -1,4 +1,4 @@
-import 'package:empathy_exchange/lib/firebase.dart';
+// import 'package:empathy_exchange/lib/firebase.dart';
 import 'package:empathy_exchange/screens/chat_screen.dart';
 import 'package:empathy_exchange/widgets/material.dart';
 import 'package:flutter/material.dart';
@@ -8,8 +8,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'screens/login_screen.dart';
 import 'screens/profile_screen.dart';
 import 'services/profile_service.dart';
-import 'package:flutter/foundation.dart';
-import 'services/fcm_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,7 +26,7 @@ void main() async {
     ),
   );
 
-  FirebaseTools.initialize();
+  // FirebaseTools.initialize();
 
   runApp(const MyApp());
 }

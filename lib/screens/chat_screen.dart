@@ -6,13 +6,18 @@ import 'package:empathy_exchange/widgets/material.dart';
 import 'package:empathy_exchange/widgets/message.dart';
 import 'package:empathy_exchange/lib/firebase.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 
 import 'package:flutter/foundation.dart';
 import 'dart:html' as html;
 
+import 'package:profanity_filter/profanity_filter.dart';
+
 int _ppage = 0;
+
+final ProfanityFilter filter = ProfanityFilter();
 
 class ChatPage extends StatefulWidget {
   const ChatPage({super.key});
@@ -35,6 +40,7 @@ class _ChatTalkPage extends StatefulWidget {
 
   @override
   State<_ChatTalkPage> createState() =>
+      // ignore: no_logic_in_create_state
       _ChatTalkPageState(chatId: chatId, myToken: myToken);
 }
 
@@ -72,13 +78,16 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
 
     () async {
       Map data = await FirebaseChatTools.load('/');
-      dynamic items = (data.values.elementAt(chatId) as Map)['data'];
+      Map chat = data.values.elementAt(chatId) as Map;
+      dynamic items = chat['data'];
+      final emailKey = ((chat['aToken'] == myToken ? chat['bToken'] : chat['aToken']) as String).replaceAll('.', '_dot_').replaceAll('@', '_at_');
+      String pfp = await FirebaseUserTools.load('profilePictures/$emailKey/profilePicture');
       if (items is Map) {
         for (JSAny? item in items.values) {
           setState(() {
             Map message = item as Map;
             _messages.add(Message(message["text"],
-                message["sender"] == myToken ? Sender.self : Sender.other));
+                message["sender"] == myToken ? Sender.self : Sender.other, pfp));
           });
         }
       } else if (items is JSArray) {
@@ -86,7 +95,7 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
           setState(() {
             Map message = item as Map;
             _messages.add(Message(message["text"],
-                message["sender"] == myToken ? Sender.self : Sender.other));
+                message["sender"] == myToken ? Sender.self : Sender.other, pfp));
           });
         }
       }
@@ -94,14 +103,22 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
       _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
 
       setState(() {
-        thisRef =
-            FirebaseChatTools.ref.child('/${data.keys.elementAt(chatId)}/data');
-        _subscription = thisRef?.onValue.listen((event) {
-          setState(() {
-            Map item = event.snapshot.children.last.value as Map;
-            if (item['sender'] != myToken && item['sender'] != 'system') {
-              _messages.add(Message(item["text"], Sender.other));
-              // My Changes Begin Here
+        thisRef = FirebaseChatTools.ref.child('/${data.keys.elementAt(chatId)}/data');
+        _subscription = thisRef?.onValue.listen((event) async {
+          Map item = event.snapshot.children.last.value as Map;
+          String sender = item['sender'];
+
+          String pfp;
+          if (sender != myToken && sender != 'system') {
+            final emailKey = sender.replaceAll('.', '_dot_').replaceAll('@', '_at_');
+            pfp = await FirebaseUserTools.load('profilePictures/$emailKey/profilePicture');
+          } else {
+            pfp = "";
+          }
+          
+          setState(() {  
+            if (sender != myToken && sender != 'system') {
+              _messages.add(Message(item["text"], Sender.other, pfp));
               _showNotification(item['text']);
             }
 
@@ -118,7 +135,7 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
     try {
-      final userData = await FirebaseTools.load(user.uid);
+      final userData = await FirebaseUserTools.load(user.uid);
       if (userData['notificationEnabled'] != true) return;
     } catch (e) {
       return;
@@ -132,22 +149,35 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
     }
   }
 
-  void _send(String value) {
+  void _send(String v) async {
+    bool hasProf = filter.hasProfanity(v);
+    String value = filter.censor(v);
+
+    final emailKey = myToken.replaceAll('.', '_dot_').replaceAll('@', '_at_');
+    String pfp = await FirebaseUserTools.load('profilePictures/$emailKey/profilePicture');
+
     setState(() {
-      _messages.add(Message(value, Sender.self));
+      _messages.add(Message(value, Sender.self, pfp));
 
       _textController.clear();
       _textFocus.requestFocus();
     });
 
-    () async {
-      Map data = await FirebaseChatTools.load('/');
-      String name = data.keys.elementAt(chatId);
-      await FirebaseChatTools.listPush('$name/data', {
-        "sender": myToken,
-        "text": value,
-      });
-    }();
+    Map data = await FirebaseChatTools.load('/');
+    String name = data.keys.elementAt(chatId);
+    await FirebaseChatTools.listPush('$name/data', {
+      "sender": myToken,
+      "text": value,
+    });
+
+    if (hasProf) {
+      dynamic thing = await FirebaseUserTools.load('${FirebaseAuth.instance.currentUser?.uid}/karma');
+      if (thing is int) {
+        await FirebaseUserTools.set('${FirebaseAuth.instance.currentUser?.uid}/karma', thing - filter.getAllProfanity(v).length);
+      } else if (thing is String) {
+        await FirebaseUserTools.set('${FirebaseAuth.instance.currentUser?.uid}/karma', int.parse(thing) - filter.getAllProfanity(v).length); 
+      }
+    }
   }
 
   @override
@@ -260,7 +290,7 @@ class _ChatPageState extends State<ChatPage> {
 
     setState(() {
       () async {
-        String myToken = await FirebaseTools.load(
+        String myToken = await FirebaseUserTools.load(
             '${FirebaseAuth.instance.currentUser!.uid}/pairToken');
 
         List<String> parts = [myToken, enteredUid];
@@ -270,7 +300,7 @@ class _ChatPageState extends State<ChatPage> {
         try {
           Map chatList = await FirebaseChatTools.load('/');
           for (JSAny? chat in chatList.values) {
-            if ((chat.dartify() as Map)["aToken"] == enteredUid) {
+            if ((chat.dartify() as Map)["fullToken"] == path) {
               if (mounted) Navigator.of(context).pop();
               return;
             }
@@ -300,9 +330,9 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   void _addChatTalkPage(String euid, String myToken) async {
-    final emailKey = euid.replaceAll('.', '_dot_').replaceAll('@', '_at_');
+    final emailKey = myToken.replaceAll('.', '_dot_').replaceAll('@', '_at_');
 
-    String pfp = await FirebaseTools.load('profilePictures/$emailKey/profilePicture');
+    String pfp = await FirebaseUserTools.load('profilePictures/$emailKey/profilePicture');
 
     _chatPages
         .add(_ChatTalkPage(myToken: myToken, otherToken: euid, chatId: _ppage));
@@ -370,7 +400,7 @@ class _ChatPageState extends State<ChatPage> {
 
     for (JSAny? chat in (chatArray.dartify() as Map).values) {
       Map data = chat.dartify() as Map;
-      String myToken = await FirebaseTools.load(
+      String myToken = await FirebaseUserTools.load(
           '${FirebaseAuth.instance.currentUser!.uid}/pairToken');
       if ((data['fullToken'] as String).split(' ').contains(myToken)) {
         if (data['aToken'] == myToken) {
