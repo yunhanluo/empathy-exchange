@@ -91,7 +91,7 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
           if (karmaToParse is int) {
             karma = karmaToParse;
           } else if (karmaToParse is String) {
-            karma = int.parse(karma);
+            karma = int.parse(karmaToParse);
           }
 
           break;
