@@ -121,26 +121,30 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
       _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
 
       setState(() {
-        thisRef = FirebaseChatTools.ref.child('/${data.keys.elementAt(chatId)}/data');
+        thisRef =
+            FirebaseChatTools.ref.child('/${data.keys.elementAt(chatId)}/data');
         _subscription = thisRef?.onValue.listen((event) async {
           Map item = event.snapshot.children.last.value as Map;
           String sender = item['sender'];
 
           String pfp;
           if (sender != myToken && sender != 'system') {
-            final emailKey = sender.replaceAll('.', '_dot_').replaceAll('@', '_at_');
-            pfp = await FirebaseUserTools.load('profilePictures/$emailKey/profilePicture');
+            final emailKey =
+                sender.replaceAll('.', '_dot_').replaceAll('@', '_at_');
+            pfp = await FirebaseUserTools.load(
+                'profilePictures/$emailKey/profilePicture');
           } else {
             pfp = "";
           }
-          
-          setState(() {  
+
+          setState(() {
             if (sender != myToken && sender != 'system') {
               _messages.add(Message(item["text"], Sender.other, pfp));
               _showNotification(item['text']);
             }
 
-            _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+            _scrollController
+                .jumpTo(_scrollController.position.maxScrollExtent);
           });
         });
       });
@@ -163,7 +167,7 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
     }
     if (html.Notification.permission == 'granted') {
       html.Notification('New Message',
-          body: messageText, icon: '/icons/Icon-192.png');
+          body: messageText, icon: '/icons/Icon-67.png');
     }
   }
 
@@ -172,7 +176,8 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
     String value = filter.censor(v);
 
     final emailKey = myToken.replaceAll('.', '_dot_').replaceAll('@', '_at_');
-    String pfp = await FirebaseUserTools.load('profilePictures/$emailKey/profilePicture');
+    String pfp = await FirebaseUserTools.load(
+        'profilePictures/$emailKey/profilePicture');
 
     setState(() {
       _messages.add(Message(value, Sender.self, pfp));
@@ -189,11 +194,16 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
     });
 
     if (hasProf) {
-      dynamic thing = await FirebaseUserTools.load('${FirebaseAuth.instance.currentUser?.uid}/karma');
+      dynamic thing = await FirebaseUserTools.load(
+          '${FirebaseAuth.instance.currentUser?.uid}/karma');
       if (thing is int) {
-        await FirebaseUserTools.set('${FirebaseAuth.instance.currentUser?.uid}/karma', thing - filter.getAllProfanity(v).length);
+        await FirebaseUserTools.set(
+            '${FirebaseAuth.instance.currentUser?.uid}/karma',
+            thing - filter.getAllProfanity(v).length);
       } else if (thing is String) {
-        await FirebaseUserTools.set('${FirebaseAuth.instance.currentUser?.uid}/karma', int.parse(thing) - filter.getAllProfanity(v).length); 
+        await FirebaseUserTools.set(
+            '${FirebaseAuth.instance.currentUser?.uid}/karma',
+            int.parse(thing) - filter.getAllProfanity(v).length);
       }
     }
   }
@@ -231,25 +241,24 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
                 6 -
                 kBottomNavigationBarHeight,
             child: SafeArea(
-              child: SingleChildScrollView(
-                controller: _scrollController,
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 60),
-                  child: Column(
-                    children: _messages,
-                    // children: <Widget>[
-                    //   StreamBuilder<DatabaseEvent>(stream: thisRef?.onValue, builder: (context, snapshot) {
-                    //     if (snapshot.hasError) return const Message("An error occured.", Sender.other);
-                    //     if (snapshot.connectionState == ConnectionState.waiting) return const CircularProgressIndicator();
+                child: SingleChildScrollView(
+              controller: _scrollController,
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 60),
+                child: Column(
+                  children: _messages,
+                  // children: <Widget>[
+                  //   StreamBuilder<DatabaseEvent>(stream: thisRef?.onValue, builder: (context, snapshot) {
+                  //     if (snapshot.hasError) return const Message("An error occured.", Sender.other);
+                  //     if (snapshot.connectionState == ConnectionState.waiting) return const CircularProgressIndicator();
 
-                    //     final dynamic data = snapshot.data!.snapshot.value;
-                    //     return Message("$data", Sender.other);
-                    //   }),
-                    // ],
-                  ),
+                  //     final dynamic data = snapshot.data!.snapshot.value;
+                  //     return Message("$data", Sender.other);
+                  //   }),
+                  // ],
                 ),
-              )
-            ),
+              ),
+            )),
           ),
           Align(
             alignment: Alignment.bottomLeft,
@@ -350,7 +359,8 @@ class _ChatPageState extends State<ChatPage> {
   void _addChatTalkPage(String euid, String myToken) async {
     final emailKey = myToken.replaceAll('.', '_dot_').replaceAll('@', '_at_');
 
-    String pfp = await FirebaseUserTools.load('profilePictures/$emailKey/profilePicture');
+    String pfp = await FirebaseUserTools.load(
+        'profilePictures/$emailKey/profilePicture');
 
     _chatPages
         .add(_ChatTalkPage(myToken: myToken, otherToken: euid, chatId: _ppage));
@@ -380,12 +390,8 @@ class _ChatPageState extends State<ChatPage> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Image.memory(
-              base64.decode(pfp.replaceAll(RegExp(r'\s'), '')),
-              width: 20,
-              height: 20,
-              fit: BoxFit.cover
-            ),
+            Image.memory(base64.decode(pfp.replaceAll(RegExp(r'\s'), '')),
+                width: 20, height: 20, fit: BoxFit.cover),
             Text(
               "Chat ${_chats.length + 1}",
               style: const TextStyle(fontSize: 16),

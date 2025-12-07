@@ -18,9 +18,13 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final ProfileService _profileService = ProfileService();
+  final TextEditingController _bioController = TextEditingController();
+  final TextEditingController _displayNameController = TextEditingController();
   String? _profilePictureUrl;
   bool _isLoading = false;
   String? _pairToken;
+  String? _bio;
+  String? _displayName;
 
   StreamSubscription<DatabaseEvent>? _profileSubscription;
 
@@ -32,12 +36,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _setupProfilePictureListener();
       _loadProfilePicture(); // Load initial profile picture if it exists
       _loadPairToken(); // Load pair token
+      _loadBio(); // Load bio if it exists
     });
   }
 
   @override
   void dispose() {
     _profileSubscription?.cancel();
+    _bioController.dispose();
+    _displayNameController.dispose();
     super.dispose();
   }
 
@@ -52,8 +59,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final path = 'profilePictures/$emailKey';
 
       // Listen to Realtime Database for profile picture updates
-      _profileSubscription =
-          FirebaseUserTools.ref.child(path).onValue.listen((DatabaseEvent event) {
+      _profileSubscription = FirebaseUserTools.ref
+          .child(path)
+          .onValue
+          .listen((DatabaseEvent event) {
         if (mounted && event.snapshot.exists) {
           final data = event.snapshot.value;
           if (data != null) {
@@ -104,6 +113,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
         } catch (retryError) {
           //🔥 _loadProfilePicture: Retry also failed - $retryError');
         }
+      }
+    }
+  }
+
+  Future<void> _loadBio() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      final data = await FirebaseUserTools.load(user.uid) as Map?;
+      if (data != null && mounted) {
+        setState(() {
+          _bio = data['bio'] as String?;
+          _displayName = data['displayName'] as String? ?? user.displayName;
+        });
+      } else if (mounted) {
+        setState(() {
+          _displayName = user.displayName;
+        });
+      }
+    } catch (_) {
+      // Use auth display name as fallback
+      if (mounted) {
+        setState(() {
+          _displayName = user.displayName;
+        });
       }
     }
   }
@@ -416,7 +451,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                     // User Name
                     Text(
-                      user?.displayName ?? 'User',
+                      _displayName ?? user?.displayName ?? 'User',
                       style: GoogleFonts.nunito(
                         fontSize: 24,
                         fontWeight: FontWeight.w700,
@@ -436,6 +471,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 8),
+                    if (_bio?.isNotEmpty == true)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text(
+                          _bio!,
+                          style: GoogleFonts.nunito(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                            fontWeight: FontWeight.w500,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    const SizedBox(height: 16),
                     // Pair Token
                     if (_pairToken != null)
                       Column(
@@ -489,8 +538,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       title: 'Edit Profile',
                       subtitle: 'Update your personal information',
                       onTap: () {
-                        // TODO: Navigate to edit profile
-                        _showComingSoon(context);
+                        _editProfile(context);
                       },
                     ),
                     _buildDivider(),
@@ -670,6 +718,119 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   bool _notificationEnabled = false;
+
+  void _editProfile(BuildContext context) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    _bioController.text = _bio ?? '';
+    _displayNameController.text = _displayName ?? user.displayName ?? '';
+
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Edit Profile',
+            style: GoogleFonts.nunito(fontWeight: FontWeight.w700)),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Display Name',
+                style: GoogleFonts.nunito(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey[700],
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _displayNameController,
+                maxLength: 50,
+                decoration: const InputDecoration(
+                  hintText: 'Enter your display name',
+                  border: OutlineInputBorder(),
+                ),
+                buildCounter: (context,
+                    {required currentLength, required isFocused, maxLength}) {
+                  return Text(
+                    '$currentLength/$maxLength',
+                    style: GoogleFonts.nunito(
+                      fontSize: 12,
+                      color: Colors.grey[500],
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Bio',
+                style: GoogleFonts.nunito(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey[700],
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _bioController,
+                maxLines: 5,
+                maxLength: 200,
+                decoration: const InputDecoration(
+                  hintText: 'Tell people a little about yourself',
+                  border: OutlineInputBorder(),
+                ),
+                buildCounter: (context,
+                    {required currentLength, required isFocused, maxLength}) {
+                  return Text(
+                    '$currentLength/$maxLength',
+                    style: GoogleFonts.nunito(
+                      fontSize: 12,
+                      color: Colors.grey[500],
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              final newBio = _bioController.text.trim();
+              final newDisplayName = _displayNameController.text.trim();
+              try {
+                await FirebaseUserTools.update(user.uid, {
+                  'bio': newBio,
+                  'displayName': newDisplayName,
+                });
+                if (mounted) {
+                  setState(() {
+                    _bio = newBio.isEmpty ? null : newBio;
+                    _displayName =
+                        newDisplayName.isEmpty ? null : newDisplayName;
+                  });
+                }
+                if (context.mounted) Navigator.pop(context);
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Failed to update profile: $e')),
+                  );
+                }
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
 
   void _showNotificationSettings(BuildContext context) async {
     final user = FirebaseAuth.instance.currentUser;
