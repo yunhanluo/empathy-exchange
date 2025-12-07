@@ -1,4 +1,5 @@
 *.txt
+!python/*.txt
 *.md
 *.log
 LOG
@@ -20,3 +21,4 @@ android/
 *.swift
 pubspec.lock
 *.py
+!python/*.py
