@@ -18,3 +18,5 @@ android/
 *.cc
 *.cmake
 *.swift
+pubspec.lock
+*.py
