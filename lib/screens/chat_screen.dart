@@ -7,7 +7,6 @@ import 'package:empathy_exchange/widgets/material.dart';
 import 'package:empathy_exchange/widgets/message.dart';
 import 'package:empathy_exchange/lib/firebase.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
@@ -79,46 +78,66 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
       Map chat = data.values.elementAt(chatId) as Map;
       dynamic items = chat['data'];
 
-      final emailKey = ((chat['aToken'] == myToken
-              ? chat['bToken']
-              : chat['aToken']) as String)
-          .replaceAll('.', '_dot_')
-          .replaceAll('@', '_at_');
-      String pfp = await FirebaseUserTools.load(
+      String theirToken = ((chat['aToken'] == myToken
+          ? chat['bToken']
+          : chat['aToken']) as String);
+
+      String emailKey =
+          theirToken.replaceAll('.', '_dot_').replaceAll('@', '_at_');
+      String theirPfp = await FirebaseUserTools.load(
           'profilePictures/$emailKey/profilePicture');
+
+      emailKey = myToken.replaceAll('.', '_dot_').replaceAll('@', '_at_');
+      String myPfp = await FirebaseUserTools.load(
+          'profilePictures/$emailKey/profilePicture');
+
       Map uData = await FirebaseUserTools.load('/');
-      int karma = 0;
+      int theirKarma = 0;
+      int myKarma = 0;
       for (Map user in uData.values) {
-        if (user['pairToken'] == emailKey) {
+        if (user['pairToken'] == myToken) {
           dynamic karmaToParse = user['karma'];
           if (karmaToParse is int) {
-            karma = karmaToParse;
+            myKarma = karmaToParse;
           } else if (karmaToParse is String) {
-            karma = int.parse(karmaToParse);
+            myKarma = int.parse(karmaToParse);
           }
-
-          break;
+        } else if (user['pairToken'] == theirToken) {
+          dynamic karmaToParse = user['karma'];
+          if (karmaToParse is int) {
+            theirKarma = karmaToParse;
+          } else if (karmaToParse is String) {
+            theirKarma = int.parse(karmaToParse);
+          }
         }
       }
 
       if (items is Map) {
-        for (JSAny? item in items.values) {
+        for (JSAny? item in items.values.take(items.values.length - 1)) {
           setState(() {
             Map message = item as Map;
             _messages.add(Message(
                 message["text"],
                 message["sender"] == myToken ? Sender.self : Sender.other,
-                pfp));
+                message["sender"],
+                message["sender"] == "system"
+                    ? "iVBORw0KGgoAAAANSUhEUgAAAGAAAABgCAYAAADimHc4AAAEvElEQVR4Aeydv69MURDHH7UIBSEUqDQ0KqFRiIZo6IhEgqAQlcQ/oFMo/EiIhGg0KpGIggSVaFQqiValQsV82Lzivb1nzrnnx9yzRs7su+/Md+Y7M989m92V3Ld2yf+ZTsAFMB3/0pIL4AIYT8CY3k+AC2A8AWN6PwEugPEEjOl7PQHnZW6PxL7MjGv25Ne+Vo8CfJAR3xM7LbZjZlyzh0+2+lm9CfBURrtPbGjhAzPk/7c/oceeBOBZfjJidmDARkDtIT0JcCxhXCnYhLTloT0JsD+h/RRsQtry0J4E2J7Qfgo2IW15aE8ClO9+AhldAGMRpi4Ar+UPZEa/xVIXMcSSIzW2GX6KAmyU7q+KvRV7L3ZWbOwilhzkIie5x+aqEjc1AXgP/0Y6vSl2QKzUIhc5yQ1HqbzZeaYiAO9a+CqBT7F7srsaTkBuOOCCcxjZyNNQgMGOeEbyzGz5ZRpccMI9WFgLh7UADIBn5K4Wza7ggBNualjhaverpQA0zgDadTufiRqoZb638q6VADRM4ynt/RTwXbFLYkfF9optmBnX7OEDA1Zc0YtaqCk6oBTQQoCDUjwNy4+o9UpQvJ1k2Bfl+o7Yc7FPYt9nxjV7+MCAJYZYgUQtaqK2KHApkIUA1xKKvy7Yw2IPxX6JxS6wxBBLjti4lNpicwZxrQW4INXwUiE/1HVOEDfEchc5yBWTh9qoMQZbBNNSgG1ScewzjHco9wVfapGLnDH5qJFaY7DZmJYC0NjOiIo3C4b/bJcfRRc5ya0lpUZq1XBF/K0E2CTVnhHT1iEBfBOrtcgNh5afWqlZw2X7WwlwQipdLxZal8X5Wqz2ggOuEA+1UnMIE+XTQK0EOK4UwreVtxVMSTdccIZyajWHYqN9LQTgKB9RKnqm+Gu4NU5qpvYa3Ms5WwigfcLkPTsfoJaLanQBJ9whOq32UGyUr4UAu5VKHov/h1jrBSfcIV6t9lBslK+FAFuUSj4q/ppujVurPbu2KQjwNbuL8Qk07oUQYKsyH20ISniWW+PWas8iJ9hPAFMYtoU4AeuG+/vr4SvlvxcGDxq3Vnt2yS1OQHaRi5xgMQXoSDEXwFgsF8AFMJ6AMb2fABfAeALG9H4CXADjCRjT+wlwAYwnYEzvJ2BxBDDupFN6PwHGwrkALoDxBIzp/QS4AMYTMKb3E+ACGE/AmN5PgAtgPAFjej8BmQLkhrsAuRPMjHcBMgeYG+4C5E4wM94FyBxgbngJAbg1WMi0GkOxLXy59WnxQX8JAYIE7gxPwAUIz6e61wWoPuIwgQsQnk91rwtQfcRhgj4FCPfUldcFMJarhABrpIf/2aT98auEAOPZPdL/lqT1c8BPgLECPQiQ+32Q8YjD9D0I8CLcQtCbExtMXMrZgwCfM5rNic2gjQ/tQYCX8e2sQubErkpWY6MHAXgZeTKieWKIHRHaLiRBgHZFzWE6NWdP2xoTo+Us7u9FABrn0/YVLhQDA1aBTcPdkwBM7JY8cIdzbjvJ/T+5ESvGNXv4wAisj9WbAEz1nTxw41XugMutiDGu2cMn7n5WjwL0M92ISl2AiCHVhLgANacbkdsFiBhSTYgLUHO6EbldgIgh1YS4AMp0a7v/AAAA//9aRXhEAAAABklEQVQDALhvssEXv78aAAAAAElFTkSuQmCC"
+                    : (message["sender"] == myToken ? myPfp : theirPfp),
+                (message["sender"] == myToken ? theirKarma : myKarma)));
           });
         }
       } else if (items is JSArray) {
-        for (JSAny? item in items.toDart) {
+        for (JSAny? item in items.toDart.take(items.toDart.length - 1)) {
           setState(() {
             Map message = item as Map;
             _messages.add(Message(
                 message["text"],
                 message["sender"] == myToken ? Sender.self : Sender.other,
-                pfp));
+                message["sender"],
+                message["sender"] == "system"
+                    ? "iVBORw0KGgoAAAANSUhEUgAAAGAAAABgCAYAAADimHc4AAAEvElEQVR4Aeydv69MURDHH7UIBSEUqDQ0KqFRiIZo6IhEgqAQlcQ/oFMo/EiIhGg0KpGIggSVaFQqiValQsV82Lzivb1nzrnnx9yzRs7su+/Md+Y7M989m92V3Ld2yf+ZTsAFMB3/0pIL4AIYT8CY3k+AC2A8AWN6PwEugPEEjOl7PQHnZW6PxL7MjGv25Ne+Vo8CfJAR3xM7LbZjZlyzh0+2+lm9CfBURrtPbGjhAzPk/7c/oceeBOBZfjJidmDARkDtIT0JcCxhXCnYhLTloT0JsD+h/RRsQtry0J4E2J7Qfgo2IW15aE8ClO9+AhldAGMRpi4Ar+UPZEa/xVIXMcSSIzW2GX6KAmyU7q+KvRV7L3ZWbOwilhzkIie5x+aqEjc1AXgP/0Y6vSl2QKzUIhc5yQ1HqbzZeaYiAO9a+CqBT7F7srsaTkBuOOCCcxjZyNNQgMGOeEbyzGz5ZRpccMI9WFgLh7UADIBn5K4Wza7ggBNualjhaverpQA0zgDadTufiRqoZb638q6VADRM4ynt/RTwXbFLYkfF9optmBnX7OEDA1Zc0YtaqCk6oBTQQoCDUjwNy4+o9UpQvJ1k2Bfl+o7Yc7FPYt9nxjV7+MCAJYZYgUQtaqK2KHApkIUA1xKKvy7Yw2IPxX6JxS6wxBBLjti4lNpicwZxrQW4INXwUiE/1HVOEDfEchc5yBWTh9qoMQZbBNNSgG1ScewzjHco9wVfapGLnDH5qJFaY7DZmJYC0NjOiIo3C4b/bJcfRRc5ya0lpUZq1XBF/K0E2CTVnhHT1iEBfBOrtcgNh5afWqlZw2X7WwlwQipdLxZal8X5Wqz2ggOuEA+1UnMIE+XTQK0EOK4UwreVtxVMSTdccIZyajWHYqN9LQTgKB9RKnqm+Gu4NU5qpvYa3Ms5WwigfcLkPTsfoJaLanQBJ9whOq32UGyUr4UAu5VKHov/h1jrBSfcIV6t9lBslK+FAFuUSj4q/ppujVurPbu2KQjwNbuL8Qk07oUQYKsyH20ISniWW+PWas8iJ9hPAFMYtoU4AeuG+/vr4SvlvxcGDxq3Vnt2yS1OQHaRi5xgMQXoSDEXwFgsF8AFMJ6AMb2fABfAeALG9H4CXADjCRjT+wlwAYwnYEzvJ2BxBDDupFN6PwHGwrkALoDxBIzp/QS4AMYTMKb3E+ACGE/AmN5PgAtgPAFjej8BmQLkhrsAuRPMjHcBMgeYG+4C5E4wM94FyBxgbngJAbg1WMi0GkOxLXy59WnxQX8JAYIE7gxPwAUIz6e61wWoPuIwgQsQnk91rwtQfcRhgj4FCPfUldcFMJarhABrpIf/2aT98auEAOPZPdL/lqT1c8BPgLECPQiQ+32Q8YjD9D0I8CLcQtCbExtMXMrZgwCfM5rNic2gjQ/tQYCX8e2sQubErkpWY6MHAXgZeTKieWKIHRHaLiRBgHZFzWE6NWdP2xoTo+Us7u9FABrn0/YVLhQDA1aBTcPdkwBM7JY8cIdzbjvJ/T+5ESvGNXv4wAisj9WbAEz1nTxw41XugMutiDGu2cMn7n5WjwL0M92ISl2AiCHVhLgANacbkdsFiBhSTYgLUHO6EbldgIgh1YS4AMp0a7v/AAAA//9aRXhEAAAABklEQVQDALhvssEXv78aAAAAAElFTkSuQmCC"
+                    : (message["sender"] == myToken ? theirPfp : myPfp),
+                (message["sender"] == myToken ? theirKarma : myKarma)));
           });
         }
       }
@@ -133,18 +152,53 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
           String sender = item['sender'];
 
           String pfp;
-          if (sender != myToken && sender != 'system') {
+          int karma;
+
+          if (sender != 'system') {
+            String theirToken = ((chat['aToken'] == sender
+                ? chat['aToken']
+                : chat['bToken']) as String);
+
             final emailKey =
-                sender.replaceAll('.', '_dot_').replaceAll('@', '_at_');
+                theirToken.replaceAll('.', '_dot_').replaceAll('@', '_at_');
             pfp = await FirebaseUserTools.load(
                 'profilePictures/$emailKey/profilePicture');
+
+            Map uData = await FirebaseUserTools.load('/');
+            karma = 0;
+            for (Map user in uData.values) {
+              if (user['pairToken'] == theirToken) {
+                dynamic karmaToParse = user['karma'];
+                if (karmaToParse is int) {
+                  karma = karmaToParse;
+                } else if (karmaToParse is String) {
+                  karma = int.parse(karmaToParse);
+                }
+
+                break;
+              }
+            }
           } else {
             pfp = "";
+            karma = 0;
           }
 
           setState(() {
-            if (sender != myToken && sender != 'system') {
-              _messages.add(Message(item["text"], Sender.other, pfp));
+            if (sender != 'system') {
+              _messages.add(Message(
+                  item["text"],
+                  sender == myToken ? Sender.self : Sender.other,
+                  sender,
+                  pfp,
+                  karma));
+              _showNotification(item['text']);
+            } else if (sender == 'system') {
+              _messages.add(Message(
+                  item["text"],
+                  Sender.other,
+                  sender,
+                  "iVBORw0KGgoAAAANSUhEUgAAAGAAAABgCAYAAADimHc4AAAEvElEQVR4Aeydv69MURDHH7UIBSEUqDQ0KqFRiIZo6IhEgqAQlcQ/oFMo/EiIhGg0KpGIggSVaFQqiValQsV82Lzivb1nzrnnx9yzRs7su+/Md+Y7M989m92V3Ld2yf+ZTsAFMB3/0pIL4AIYT8CY3k+AC2A8AWN6PwEugPEEjOl7PQHnZW6PxL7MjGv25Ne+Vo8CfJAR3xM7LbZjZlyzh0+2+lm9CfBURrtPbGjhAzPk/7c/oceeBOBZfjJidmDARkDtIT0JcCxhXCnYhLTloT0JsD+h/RRsQtry0J4E2J7Qfgo2IW15aE8ClO9+AhldAGMRpi4Ar+UPZEa/xVIXMcSSIzW2GX6KAmyU7q+KvRV7L3ZWbOwilhzkIie5x+aqEjc1AXgP/0Y6vSl2QKzUIhc5yQ1HqbzZeaYiAO9a+CqBT7F7srsaTkBuOOCCcxjZyNNQgMGOeEbyzGz5ZRpccMI9WFgLh7UADIBn5K4Wza7ggBNualjhaverpQA0zgDadTufiRqoZb638q6VADRM4ynt/RTwXbFLYkfF9optmBnX7OEDA1Zc0YtaqCk6oBTQQoCDUjwNy4+o9UpQvJ1k2Bfl+o7Yc7FPYt9nxjV7+MCAJYZYgUQtaqK2KHApkIUA1xKKvy7Yw2IPxX6JxS6wxBBLjti4lNpicwZxrQW4INXwUiE/1HVOEDfEchc5yBWTh9qoMQZbBNNSgG1ScewzjHco9wVfapGLnDH5qJFaY7DZmJYC0NjOiIo3C4b/bJcfRRc5ya0lpUZq1XBF/K0E2CTVnhHT1iEBfBOrtcgNh5afWqlZw2X7WwlwQipdLxZal8X5Wqz2ggOuEA+1UnMIE+XTQK0EOK4UwreVtxVMSTdccIZyajWHYqN9LQTgKB9RKnqm+Gu4NU5qpvYa3Ms5WwigfcLkPTsfoJaLanQBJ9whOq32UGyUr4UAu5VKHov/h1jrBSfcIV6t9lBslK+FAFuUSj4q/ppujVurPbu2KQjwNbuL8Qk07oUQYKsyH20ISniWW+PWas8iJ9hPAFMYtoU4AeuG+/vr4SvlvxcGDxq3Vnt2yS1OQHaRi5xgMQXoSDEXwFgsF8AFMJ6AMb2fABfAeALG9H4CXADjCRjT+wlwAYwnYEzvJ2BxBDDupFN6PwHGwrkALoDxBIzp/QS4AMYTMKb3E+ACGE/AmN5PgAtgPAFjej8BmQLkhrsAuRPMjHcBMgeYG+4C5E4wM94FyBxgbngJAbg1WMi0GkOxLXy59WnxQX8JAYIE7gxPwAUIz6e61wWoPuIwgQsQnk91rwtQfcRhgj4FCPfUldcFMJarhABrpIf/2aT98auEAOPZPdL/lqT1c8BPgLECPQiQ+32Q8YjD9D0I8CLcQtCbExtMXMrZgwCfM5rNic2gjQ/tQYCX8e2sQubErkpWY6MHAXgZeTKieWKIHRHaLiRBgHZFzWE6NWdP2xoTo+Us7u9FABrn0/YVLhQDA1aBTcPdkwBM7JY8cIdzbjvJ/T+5ESvGNXv4wAisj9WbAEz1nTxw41XugMutiDGu2cMn7n5WjwL0M92ISl2AiCHVhLgANacbkdsFiBhSTYgLUHO6EbldgIgh1YS4AMp0a7v/AAAA//9aRXhEAAAABklEQVQDALhvssEXv78aAAAAAElFTkSuQmCC",
+                  0));
               _showNotification(item['text']);
             }
 
@@ -167,6 +221,7 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
     } catch (e) {
       return;
     }
+
     if (html.Notification.permission == 'default') {
       await html.Notification.requestPermission();
     }
@@ -180,12 +235,16 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
     bool hasProf = filter.hasProfanity(v);
     String value = filter.censor(v);
 
-    final emailKey = myToken.replaceAll('.', '_dot_').replaceAll('@', '_at_');
-    String pfp = await FirebaseUserTools.load(
-        'profilePictures/$emailKey/profilePicture');
+    // final emailKey = myToken.replaceAll('.', '_dot_').replaceAll('@', '_at_');
+    // String pfp = await FirebaseUserTools.load(
+    //     'profilePictures/$emailKey/profilePicture');
+    // dynamic karmaD = await FirebaseUserTools.load(
+    //     '${FirebaseAuth.instance.currentUser?.uid}/karma');
+    // int karma =
+    //     karmaD is int ? karmaD : (karmaD is String ? int.parse(karmaD) : 0);
 
     setState(() {
-      _messages.add(Message(value, Sender.self, pfp));
+      // _messages.add(Message(value, Sender.self, pfp, karma));
 
       _textController.clear();
       _textFocus.requestFocus();
@@ -361,7 +420,11 @@ class _ChatPageState extends State<ChatPage> {
     });
   }
 
-  void _addChatTalkPage(String euid, String myToken) async {
+  void _addChatTalkPage(String myToken, String euid) async {
+    if (await FirebaseUserTools.getUidFromToken(euid) == null) {
+      return;
+    }
+
     final emailKey = myToken.replaceAll('.', '_dot_').replaceAll('@', '_at_');
 
     String pfp = await FirebaseUserTools.load(
@@ -411,6 +474,8 @@ class _ChatPageState extends State<ChatPage> {
         ),
       ),
     ));
+
+    setState(() {});
   }
 
   void rebuildChats() async {
@@ -431,12 +496,10 @@ class _ChatPageState extends State<ChatPage> {
       Map data = chat.dartify() as Map;
       String myToken = await FirebaseUserTools.load(
           '${FirebaseAuth.instance.currentUser!.uid}/pairToken');
-      if ((data['fullToken'] as String).split(' ').contains(myToken)) {
-        if (data['aToken'] == myToken) {
-          _addChatTalkPage(myToken, data["bToken"] as String);
-        } else if (data['bToken'] == myToken) {
-          _addChatTalkPage(myToken, data["aToken"] as String);
-        }
+      if (data['aToken'] == myToken) {
+        _addChatTalkPage(myToken, data["bToken"] as String);
+      } else if (data['bToken'] == myToken) {
+        _addChatTalkPage(myToken, data["aToken"] as String);
       }
     }
 

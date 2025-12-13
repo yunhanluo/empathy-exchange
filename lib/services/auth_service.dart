@@ -22,12 +22,18 @@ class AuthService {
         email: email,
         password: password,
       );
-      if (! await FirebaseUserTools.exists(result.user!.uid)) {
+      if (!await FirebaseUserTools.exists(result.user!.uid)) {
         await FirebaseUserTools.save(result.user!.uid, {
           "email": result.user?.email,
-          "chats": [],
           "pairToken": result.user?.email,
-          "karma": 0
+          "karma": 0,
+          "badges": [
+            {
+              "reason": "Joined Empathy Exchange",
+              "time": DateTime.now().toIso8601String(),
+              "giver": "system"
+            }
+          ],
         });
       }
       return result;
@@ -48,9 +54,15 @@ class AuthService {
       );
       await FirebaseUserTools.save(result.user!.uid, {
         "email": result.user?.email,
-        "chats": [],
         "pairToken": result.user?.email,
-        "karma": 0
+        "karma": 0,
+        "badges": [
+          {
+            "reason": "Joined Empathy Exchange",
+            "time": DateTime.now().toIso8601String(),
+            "giver": "system"
+          }
+        ],
       });
       return result;
     } on FirebaseAuthException catch (e) {
@@ -81,12 +93,18 @@ class AuthService {
       // Sign in to Firebase with the Google credential
       final UserCredential result =
           await _auth.signInWithCredential(credential);
-      if (! await FirebaseUserTools.exists(result.user!.uid)) {
+      if (!await FirebaseUserTools.exists(result.user!.uid)) {
         await FirebaseUserTools.save(result.user!.uid, {
           "email": result.user?.email,
-          "chats": [],
           "pairToken": result.user?.email,
-          "karma": 0
+          "karma": 0,
+          "badges": [
+            {
+              "reason": "Joined Empathy Exchange",
+              "time": DateTime.now().toIso8601String(),
+              "giver": "system"
+            }
+          ],
         });
       }
       return result;
