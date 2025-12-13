@@ -37,10 +37,22 @@ class FirebaseUserTools {
   }
 
   // static void initialize() async {
-  //   if (!await exists("chats")) {
-  //     save("chats", {});
+  //   if (!await exists("users")) {
+  //     save("users", {});
   //   }
   // }
+
+  static Future<String?> getUidFromToken(String token) async {
+    Map users = await load('/');
+    for (String uid in users.keys) {
+      String testToken = await load('$uid/pairToken');
+      if (testToken == token) {
+        return uid;
+      }
+    }
+
+    return null;
+  }
 }
 
 
