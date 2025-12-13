@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:js_interop';
-
+import 'package:http/http.dart' as http;
+import 'package:profanity_filter/profanity_filter.dart';
 import 'package:empathy_exchange/widgets/material.dart';
 import 'package:empathy_exchange/widgets/message.dart';
 import 'package:empathy_exchange/lib/firebase.dart';
@@ -9,11 +10,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
-
 import 'package:flutter/foundation.dart';
 import 'dart:html' as html;
-
-import 'package:profanity_filter/profanity_filter.dart';
 
 int _ppage = 0;
 
@@ -80,9 +78,14 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
       Map data = await FirebaseChatTools.load('/');
       Map chat = data.values.elementAt(chatId) as Map;
       dynamic items = chat['data'];
-      
-      final emailKey = ((chat['aToken'] == myToken ? chat['bToken'] : chat['aToken']) as String).replaceAll('.', '_dot_').replaceAll('@', '_at_');
-      String pfp = await FirebaseUserTools.load('profilePictures/$emailKey/profilePicture');
+
+      final emailKey = ((chat['aToken'] == myToken
+              ? chat['bToken']
+              : chat['aToken']) as String)
+          .replaceAll('.', '_dot_')
+          .replaceAll('@', '_at_');
+      String pfp = await FirebaseUserTools.load(
+          'profilePictures/$emailKey/profilePicture');
       Map uData = await FirebaseUserTools.load('/');
       int karma = 0;
       for (Map user in uData.values) {
@@ -97,12 +100,13 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
           break;
         }
       }
-      
+
       if (items is Map) {
         for (JSAny? item in items.values) {
           setState(() {
             Map message = item as Map;
-            _messages.add(Message(message["text"],
+            _messages.add(Message(
+                message["text"],
                 message["sender"] == myToken ? Sender.self : Sender.other,
                 pfp));
           });
@@ -111,7 +115,8 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
         for (JSAny? item in items.toDart) {
           setState(() {
             Map message = item as Map;
-            _messages.add(Message(message["text"],
+            _messages.add(Message(
+                message["text"],
                 message["sender"] == myToken ? Sender.self : Sender.other,
                 pfp));
           });

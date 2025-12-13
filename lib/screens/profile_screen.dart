@@ -547,8 +547,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       title: 'Security',
                       subtitle: 'Password and security settings',
                       onTap: () {
-                        // TODO: Navigate to security settings
-                        _showComingSoon(context);
+                        _showSecuritySettings(context);
                       },
                     ),
                     _buildDivider(),
@@ -557,7 +556,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       title: 'Notifications',
                       subtitle: 'Manage your notification preferences',
                       onTap: () {
-                        // TODO: Navigate to notification settings
                         _showNotificationSettings(context);
                       },
                     ),
@@ -973,6 +971,355 @@ class _ProfileScreenState extends State<ProfileScreen> {
               style: GoogleFonts.nunito(
                 fontWeight: FontWeight.w600,
                 color: const Color(0xFF667eea),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSecuritySettings(BuildContext context) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    // Check if user has email/password provider
+    final hasEmailPassword =
+        user.providerData.any((provider) => provider.providerId == 'password');
+
+    // Get account creation date
+    final creationDate = user.metadata.creationTime;
+    final signInMethods = user.providerData
+        .map((provider) => provider.providerId == 'password'
+            ? 'Email/Password'
+            : provider.providerId == 'google.com'
+                ? 'Google'
+                : provider.providerId)
+        .join(', ');
+
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'Security Settings',
+          style: GoogleFonts.nunito(
+            fontWeight: FontWeight.w700,
+            color: const Color(0xFF667eea),
+          ),
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Account Information
+              Text(
+                'Account Information',
+                style: GoogleFonts.nunito(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF667eea),
+                ),
+              ),
+              const SizedBox(height: 12),
+              _buildSecurityRow('Email:', user.email ?? 'No email'),
+              const SizedBox(height: 8),
+              _buildSecurityRow('Sign-in Method:', signInMethods),
+              if (creationDate != null) ...[
+                const SizedBox(height: 8),
+                _buildSecurityRow(
+                  'Account Created:',
+                  '${creationDate.month}/${creationDate.day}/${creationDate.year}',
+                ),
+              ],
+              const SizedBox(height: 24),
+              // Change Password (only for email/password users)
+
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _showChangePasswordDialog(context);
+                  },
+                  icon: const Icon(Icons.lock_outline),
+                  label: Text(
+                    'Change Password',
+                    style: GoogleFonts.nunito(fontWeight: FontWeight.w600),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF667eea),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Delete Account
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _showDeleteAccountDialog(context);
+                  },
+                  icon: const Icon(Icons.delete_outline, color: Colors.red),
+                  label: Text(
+                    'Delete Account',
+                    style: GoogleFonts.nunito(
+                      fontWeight: FontWeight.w600,
+                      color: Colors.red,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Colors.red),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Close',
+              style: GoogleFonts.nunito(
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF667eea),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSecurityRow(String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 120,
+          child: Text(
+            label,
+            style: GoogleFonts.nunito(
+              fontSize: 14,
+              color: Colors.grey[700],
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: GoogleFonts.nunito(
+              fontSize: 14,
+              color: Colors.grey[800],
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showChangePasswordDialog(BuildContext context) {
+    final currentPasswordController = TextEditingController();
+    final newPasswordController = TextEditingController();
+    final confirmPasswordController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'Change Password',
+          style: GoogleFonts.nunito(
+            fontWeight: FontWeight.w700,
+            color: const Color(0xFF667eea),
+          ),
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: currentPasswordController,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'Current Password',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: newPasswordController,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'New Password',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: confirmPasswordController,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'Confirm New Password',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              final currentPassword = currentPasswordController.text;
+              final newPassword = newPasswordController.text;
+              final confirmPassword = confirmPasswordController.text;
+
+              if (newPassword != confirmPassword) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('New passwords do not match')),
+                );
+                return;
+              }
+
+              if (newPassword.length < 6) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                      content: Text('Password must be at least 6 characters')),
+                );
+                return;
+              }
+
+              try {
+                final user = FirebaseAuth.instance.currentUser;
+                if (user?.email == null) return;
+
+                // Re-authenticate with current password
+                final credential = EmailAuthProvider.credential(
+                  email: user!.email!,
+                  password: currentPassword,
+                );
+                await user.reauthenticateWithCredential(credential);
+
+                // Update password
+                await user.updatePassword(newPassword);
+
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Password changed successfully'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content:
+                          Text('Failed to change password: ${e.toString()}'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text('Change Password'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteAccountDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'Delete Account',
+          style: GoogleFonts.nunito(
+            fontWeight: FontWeight.w700,
+            color: Colors.red,
+          ),
+        ),
+        content: Text(
+          'Are you sure you want to delete your account? This action cannot be undone. All your data, chats, and profile information will be permanently deleted.',
+          style: GoogleFonts.nunito(
+            color: Colors.grey[800],
+            height: 1.5,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.nunito(
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF667eea),
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () async {
+              try {
+                final user = FirebaseAuth.instance.currentUser;
+                if (user == null) return;
+
+                // Delete user data from Realtime Database
+                try {
+                  // Clear all user data
+                  final ref = FirebaseUserTools.ref.child(user.uid);
+                  await ref.remove();
+                } catch (e) {
+                  print('Error deleting user data: $e');
+                }
+
+                // Delete Firebase Auth account
+                await user.delete();
+
+                if (context.mounted) {
+                  Navigator.pop(context); // Close delete dialog
+                  // User will be automatically signed out and redirected to login
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content:
+                          Text('Failed to delete account: ${e.toString()}'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            },
+            child: Text(
+              'Delete',
+              style: GoogleFonts.nunito(
+                fontWeight: FontWeight.w600,
+                color: Colors.red,
               ),
             ),
           ),
