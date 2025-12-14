@@ -33,19 +33,48 @@ class _CustomSideTooltipState extends State<CustomSideTooltip> {
     _timer?.cancel();
 
     setState(() {
-      tool = Positioned(
-        // Position the tooltip based on the target offset and direction
-        left: widget.preferredDirection == AxisDirection.right
-            ? offset.dx + size.width + 8.0 // To the right, with padding
-            : null,
-        right: widget.preferredDirection == AxisDirection.left
-            ? MediaQuery.of(context).size.width - offset.dx + 8.0 // To the left
-            : null,
-        top: offset.dy + (size.height / 2) - 16.0, // Centered vertically
-        child: Row(children: <Widget>[
-          widget.tooltip ?? const SizedBox.shrink(),
-        ]),
-      );
+      Widget tooltipset = widget.tooltip ?? const SizedBox.shrink();
+      Widget mainchild = widget.child;
+
+      // tool = SizedBox(
+      //     child: Stack(children: <Widget>[
+      //   Positioned(
+      //       // Position the tooltip based on the target offset and direction
+      //       left: widget.preferredDirection == AxisDirection.right
+      //           ? offset.dx + size.width + 8.0 // To the right, with padding
+      //           : null,
+      //       right: widget.preferredDirection == AxisDirection.left
+      //           ? MediaQuery.of(context).size.width -
+      //               offset.dx +
+      //               8.0 // To the left
+      //           : null,
+      //       top: offset.dy + (size.height / 2) - 16.0, // Centered vertically
+      //       child: Row(
+      //           children: widget.preferredDirection == AxisDirection.right
+      //               ? <Widget>[
+      //                   mainchild,
+      //                   const SizedBox(width: 8.0),
+      //                   tooltipset,
+      //                 ]
+      //               : <Widget>[
+      //                   tooltipset,
+      //                   const SizedBox(width: 8.0),
+      //                   mainchild,
+      //                 ]))
+      // ]));
+      tool = SizedBox(
+          child: Row(
+              children: widget.preferredDirection == AxisDirection.right
+                  ? <Widget>[
+                      mainchild,
+                      const SizedBox(width: 8.0),
+                      tooltipset,
+                    ]
+                  : <Widget>[
+                      tooltipset,
+                      const SizedBox(width: 8.0),
+                      mainchild,
+                    ]));
     });
   }
 
@@ -73,7 +102,8 @@ class _CustomSideTooltipState extends State<CustomSideTooltip> {
       onLongPressUp: _hideTooltip,
       child: MouseRegion(
         onHover: (_) => _showTooltip(),
-        onExit: (_) => Timer(const Duration(milliseconds: 1250), _hideTooltip),
+        // onExit: (_) => Timer(const Duration(milliseconds: 10), _hideTooltip),
+        onExit: (_) => _hideTooltip(),
         child: tool ?? widget.child,
       ),
     );

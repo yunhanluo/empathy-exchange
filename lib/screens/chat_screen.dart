@@ -123,7 +123,7 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
                 message["sender"] == "system"
                     ? "iVBORw0KGgoAAAANSUhEUgAAAGAAAABgCAYAAADimHc4AAAEvElEQVR4Aeydv69MURDHH7UIBSEUqDQ0KqFRiIZo6IhEgqAQlcQ/oFMo/EiIhGg0KpGIggSVaFQqiValQsV82Lzivb1nzrnnx9yzRs7su+/Md+Y7M989m92V3Ld2yf+ZTsAFMB3/0pIL4AIYT8CY3k+AC2A8AWN6PwEugPEEjOl7PQHnZW6PxL7MjGv25Ne+Vo8CfJAR3xM7LbZjZlyzh0+2+lm9CfBURrtPbGjhAzPk/7c/oceeBOBZfjJidmDARkDtIT0JcCxhXCnYhLTloT0JsD+h/RRsQtry0J4E2J7Qfgo2IW15aE8ClO9+AhldAGMRpi4Ar+UPZEa/xVIXMcSSIzW2GX6KAmyU7q+KvRV7L3ZWbOwilhzkIie5x+aqEjc1AXgP/0Y6vSl2QKzUIhc5yQ1HqbzZeaYiAO9a+CqBT7F7srsaTkBuOOCCcxjZyNNQgMGOeEbyzGz5ZRpccMI9WFgLh7UADIBn5K4Wza7ggBNualjhaverpQA0zgDadTufiRqoZb638q6VADRM4ynt/RTwXbFLYkfF9optmBnX7OEDA1Zc0YtaqCk6oBTQQoCDUjwNy4+o9UpQvJ1k2Bfl+o7Yc7FPYt9nxjV7+MCAJYZYgUQtaqK2KHApkIUA1xKKvy7Yw2IPxX6JxS6wxBBLjti4lNpicwZxrQW4INXwUiE/1HVOEDfEchc5yBWTh9qoMQZbBNNSgG1ScewzjHco9wVfapGLnDH5qJFaY7DZmJYC0NjOiIo3C4b/bJcfRRc5ya0lpUZq1XBF/K0E2CTVnhHT1iEBfBOrtcgNh5afWqlZw2X7WwlwQipdLxZal8X5Wqz2ggOuEA+1UnMIE+XTQK0EOK4UwreVtxVMSTdccIZyajWHYqN9LQTgKB9RKnqm+Gu4NU5qpvYa3Ms5WwigfcLkPTsfoJaLanQBJ9whOq32UGyUr4UAu5VKHov/h1jrBSfcIV6t9lBslK+FAFuUSj4q/ppujVurPbu2KQjwNbuL8Qk07oUQYKsyH20ISniWW+PWas8iJ9hPAFMYtoU4AeuG+/vr4SvlvxcGDxq3Vnt2yS1OQHaRi5xgMQXoSDEXwFgsF8AFMJ6AMb2fABfAeALG9H4CXADjCRjT+wlwAYwnYEzvJ2BxBDDupFN6PwHGwrkALoDxBIzp/QS4AMYTMKb3E+ACGE/AmN5PgAtgPAFjej8BmQLkhrsAuRPMjHcBMgeYG+4C5E4wM94FyBxgbngJAbg1WMi0GkOxLXy59WnxQX8JAYIE7gxPwAUIz6e61wWoPuIwgQsQnk91rwtQfcRhgj4FCPfUldcFMJarhABrpIf/2aT98auEAOPZPdL/lqT1c8BPgLECPQiQ+32Q8YjD9D0I8CLcQtCbExtMXMrZgwCfM5rNic2gjQ/tQYCX8e2sQubErkpWY6MHAXgZeTKieWKIHRHaLiRBgHZFzWE6NWdP2xoTo+Us7u9FABrn0/YVLhQDA1aBTcPdkwBM7JY8cIdzbjvJ/T+5ESvGNXv4wAisj9WbAEz1nTxw41XugMutiDGu2cMn7n5WjwL0M92ISl2AiCHVhLgANacbkdsFiBhSTYgLUHO6EbldgIgh1YS4AMp0a7v/AAAA//9aRXhEAAAABklEQVQDALhvssEXv78aAAAAAElFTkSuQmCC"
                     : (message["sender"] == myToken ? myPfp : theirPfp),
-                (message["sender"] == myToken ? theirKarma : myKarma)));
+                (message["sender"] == myToken ? myKarma : theirKarma)));
           });
         }
       } else if (items is JSArray) {
@@ -137,7 +137,7 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
                 message["sender"] == "system"
                     ? "iVBORw0KGgoAAAANSUhEUgAAAGAAAABgCAYAAADimHc4AAAEvElEQVR4Aeydv69MURDHH7UIBSEUqDQ0KqFRiIZo6IhEgqAQlcQ/oFMo/EiIhGg0KpGIggSVaFQqiValQsV82Lzivb1nzrnnx9yzRs7su+/Md+Y7M989m92V3Ld2yf+ZTsAFMB3/0pIL4AIYT8CY3k+AC2A8AWN6PwEugPEEjOl7PQHnZW6PxL7MjGv25Ne+Vo8CfJAR3xM7LbZjZlyzh0+2+lm9CfBURrtPbGjhAzPk/7c/oceeBOBZfjJidmDARkDtIT0JcCxhXCnYhLTloT0JsD+h/RRsQtry0J4E2J7Qfgo2IW15aE8ClO9+AhldAGMRpi4Ar+UPZEa/xVIXMcSSIzW2GX6KAmyU7q+KvRV7L3ZWbOwilhzkIie5x+aqEjc1AXgP/0Y6vSl2QKzUIhc5yQ1HqbzZeaYiAO9a+CqBT7F7srsaTkBuOOCCcxjZyNNQgMGOeEbyzGz5ZRpccMI9WFgLh7UADIBn5K4Wza7ggBNualjhaverpQA0zgDadTufiRqoZb638q6VADRM4ynt/RTwXbFLYkfF9optmBnX7OEDA1Zc0YtaqCk6oBTQQoCDUjwNy4+o9UpQvJ1k2Bfl+o7Yc7FPYt9nxjV7+MCAJYZYgUQtaqK2KHApkIUA1xKKvy7Yw2IPxX6JxS6wxBBLjti4lNpicwZxrQW4INXwUiE/1HVOEDfEchc5yBWTh9qoMQZbBNNSgG1ScewzjHco9wVfapGLnDH5qJFaY7DZmJYC0NjOiIo3C4b/bJcfRRc5ya0lpUZq1XBF/K0E2CTVnhHT1iEBfBOrtcgNh5afWqlZw2X7WwlwQipdLxZal8X5Wqz2ggOuEA+1UnMIE+XTQK0EOK4UwreVtxVMSTdccIZyajWHYqN9LQTgKB9RKnqm+Gu4NU5qpvYa3Ms5WwigfcLkPTsfoJaLanQBJ9whOq32UGyUr4UAu5VKHov/h1jrBSfcIV6t9lBslK+FAFuUSj4q/ppujVurPbu2KQjwNbuL8Qk07oUQYKsyH20ISniWW+PWas8iJ9hPAFMYtoU4AeuG+/vr4SvlvxcGDxq3Vnt2yS1OQHaRi5xgMQXoSDEXwFgsF8AFMJ6AMb2fABfAeALG9H4CXADjCRjT+wlwAYwnYEzvJ2BxBDDupFN6PwHGwrkALoDxBIzp/QS4AMYTMKb3E+ACGE/AmN5PgAtgPAFjej8BmQLkhrsAuRPMjHcBMgeYG+4C5E4wM94FyBxgbngJAbg1WMi0GkOxLXy59WnxQX8JAYIE7gxPwAUIz6e61wWoPuIwgQsQnk91rwtQfcRhgj4FCPfUldcFMJarhABrpIf/2aT98auEAOPZPdL/lqT1c8BPgLECPQiQ+32Q8YjD9D0I8CLcQtCbExtMXMrZgwCfM5rNic2gjQ/tQYCX8e2sQubErkpWY6MHAXgZeTKieWKIHRHaLiRBgHZFzWE6NWdP2xoTo+Us7u9FABrn0/YVLhQDA1aBTcPdkwBM7JY8cIdzbjvJ/T+5ESvGNXv4wAisj9WbAEz1nTxw41XugMutiDGu2cMn7n5WjwL0M92ISl2AiCHVhLgANacbkdsFiBhSTYgLUHO6EbldgIgh1YS4AMp0a7v/AAAA//9aRXhEAAAABklEQVQDALhvssEXv78aAAAAAElFTkSuQmCC"
                     : (message["sender"] == myToken ? theirPfp : myPfp),
-                (message["sender"] == myToken ? theirKarma : myKarma)));
+                (message["sender"] == myToken ? myKarma : theirKarma)));
           });
         }
       }
@@ -425,7 +425,7 @@ class _ChatPageState extends State<ChatPage> {
       return;
     }
 
-    final emailKey = myToken.replaceAll('.', '_dot_').replaceAll('@', '_at_');
+    final emailKey = euid.replaceAll('.', '_dot_').replaceAll('@', '_at_');
 
     String pfp = await FirebaseUserTools.load(
         'profilePictures/$emailKey/profilePicture');
