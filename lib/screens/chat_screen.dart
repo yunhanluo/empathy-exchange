@@ -1,18 +1,16 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:js_interop';
-
+import 'package:http/http.dart' as http;
+import 'package:profanity_filter/profanity_filter.dart';
 import 'package:empathy_exchange/widgets/material.dart';
 import 'package:empathy_exchange/widgets/message.dart';
 import 'package:empathy_exchange/lib/firebase.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
-
 import 'package:flutter/foundation.dart';
 import 'dart:html' as html;
-
-import 'package:profanity_filter/profanity_filter.dart';
 
 int _ppage = 0;
 
@@ -187,7 +185,8 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
 
           setState(() {
             if (sender != 'system') {
-              _messages.add(Message(item["text"],
+              _messages.add(Message(
+                  item["text"],
                   sender == myToken ? Sender.self : Sender.other,
                   sender,
                   pfp,
@@ -425,7 +424,7 @@ class _ChatPageState extends State<ChatPage> {
     if (await FirebaseUserTools.getUidFromToken(euid) == null) {
       return;
     }
-    
+
     final emailKey = myToken.replaceAll('.', '_dot_').replaceAll('@', '_at_');
 
     String pfp = await FirebaseUserTools.load(
