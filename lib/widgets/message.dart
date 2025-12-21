@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 
 class Message extends StatefulWidget {
   const Message(
-      this.value, this.sender, this.senderToken, this.pfp64, this.karma,
+      this.value, this.sender, this.senderToken, this.pfp64, this.karma, this.chatId,
       {super.key});
 
   final String value;
@@ -15,6 +15,7 @@ class Message extends StatefulWidget {
   final String senderToken;
   final String pfp64;
   final int karma;
+  final int chatId;
 
   @override
   // ignore: no_logic_in_create_state
@@ -49,6 +50,13 @@ class _MessageState extends State<Message> {
     });
     await FirebaseUserTools.set(
         '$uid/karma', await FirebaseUserTools.load('$uid/karma') + 1);
+    
+    Map data = await FirebaseChatTools.load('/');
+    String name = data.keys.elementAt(widget.chatId);
+    await FirebaseChatTools.listPush('$name/data', {
+      "sender": 'system',
+      "text": "${await FirebaseUserTools.load('${FirebaseAuth.instance.currentUser?.uid}/displayName')} gave ${await FirebaseUserTools.load('$uid/displayName')} a kindness badge! Reason: $reason",
+    });
   }
 
   @override
