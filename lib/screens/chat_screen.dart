@@ -336,7 +336,7 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
 
   Future<void> _sendAIResponseAsMessage(String aiResponse) async {
     Map data = await FirebaseChatTools.load('/');
-    String name = data.keys.elementAt(chatId);
+    String name = data.keys.elementAt(widget.chatId);
     await FirebaseChatTools.listPush('$name/data', {
       "sender": "system",
       "text": "AI Analysis: $aiResponse",
