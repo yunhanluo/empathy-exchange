@@ -18,19 +18,11 @@ class Message extends StatefulWidget {
 
   @override
   // ignore: no_logic_in_create_state
-  State<Message> createState() =>
-      _MessageState(value, sender, senderToken, pfp64, karma);
+  State<Message> createState() => _MessageState();
 }
 
 class _MessageState extends State<Message> {
-  _MessageState(
-      this.value, this.sender, this.senderToken, this.pfp64, this.karma);
-
-  final String value;
-  final Sender sender;
-  final String senderToken;
-  final String pfp64;
-  final int karma;
+  _MessageState();
 
   TextEditingController reasonController = TextEditingController();
 
@@ -44,7 +36,7 @@ class _MessageState extends State<Message> {
   void _giveBadge(String reason) async {
     String mytoken = await FirebaseUserTools.load(
         '${FirebaseAuth.instance.currentUser?.uid}/pairToken');
-    String? uid = await FirebaseUserTools.getUidFromToken(senderToken);
+    String? uid = await FirebaseUserTools.getUidFromToken(widget.senderToken);
 
     if (FirebaseAuth.instance.currentUser?.uid == uid) {
       return;
@@ -64,9 +56,11 @@ class _MessageState extends State<Message> {
     Widget mainChatMessage = Container(
         decoration: BoxDecoration(
           // Use BoxDecoration for more styling options
-          color: (sender == Sender.self
+          color: (widget.sender == Sender.self
               ? Colors.green.shade300
-              : Colors.blue.shade300),
+              : (widget.sender == Sender.system
+                  ? Colors.transparent
+                  : Colors.blue.shade300)),
           borderRadius: BorderRadius.circular(12), // Rounded corners
         ),
         child: Padding(
@@ -77,16 +71,10 @@ class _MessageState extends State<Message> {
                   maxWidth: 400,
                 ),
                 child: Text(
-                  value,
+                  widget.value,
                   style: const TextStyle(fontSize: 16),
                 ))));
 
-    Widget paddedMessage = (sender == Sender.self || !senderToken.contains('@'))
-        ? mainChatMessage
-        : CustomSideTooltip(
-            preferredDirection: AxisDirection.right,
-            child: mainChatMessage,
-          );
     IconButton addButton = IconButton(
         icon: Image.memory(
             base64.decode(
@@ -96,9 +84,6 @@ class _MessageState extends State<Message> {
             height: 25,
             fit: BoxFit.cover),
         onPressed: () {
-          if (paddedMessage is CustomSideTooltip) {
-            // paddedMessage.overlayEntry?.remove();
-          }
           showDialog(
               context: context,
               builder: (context) {
@@ -141,30 +126,39 @@ class _MessageState extends State<Message> {
         constraints: BoxConstraints.tight(const Size.square(30)),
         iconSize: 25,
         padding: const EdgeInsets.all(2));
-    if (paddedMessage is CustomSideTooltip) {
-      paddedMessage.tooltip = addButton;
-    }
+    Widget paddedMessage =
+        (widget.sender == Sender.self || !widget.senderToken.contains('@'))
+            ? mainChatMessage
+            : CustomSideTooltip(
+                preferredDirection: AxisDirection.right,
+                tooltip: addButton,
+                child: mainChatMessage,
+              );
 
     Padding padding = const Padding(padding: EdgeInsets.only(left: 5));
     Widget pfpSec = Column(children: <Widget>[
-      Image.memory(base64.decode(pfp64.replaceAll(RegExp(r'\s'), '')),
+      Image.memory(base64.decode(widget.pfp64.replaceAll(RegExp(r'\s'), '')),
           width: 20, height: 20, fit: BoxFit.cover),
-      Text(karma.toString(), style: const TextStyle(fontSize: 10))
+      Text(widget.karma.toString(), style: const TextStyle(fontSize: 10))
     ]);
 
     return Align(
-        alignment: (sender == Sender.self
+        alignment: (widget.sender == Sender.self
             ? Alignment.centerRight
-            : Alignment.centerLeft),
+            : (widget.sender == Sender.system
+                ? Alignment.center
+                : Alignment.centerLeft)),
         child: Padding(
             padding: const EdgeInsets.symmetric(
                 horizontal: 8, vertical: 4), // More balanced padding
             child: Row(
                 mainAxisSize: MainAxisSize.min,
-                children: sender == Sender.self
+                children: widget.sender == Sender.self
                     ? <Widget>[paddedMessage, padding, pfpSec]
-                    : <Widget>[pfpSec, padding, paddedMessage])));
+                    : (widget.sender == Sender.system
+                        ? <Widget>[padding, Center(child: paddedMessage), padding]
+                        : <Widget>[pfpSec, padding, paddedMessage]))));
   }
 }
 
-enum Sender { self, other }
+enum Sender { self, other, system }

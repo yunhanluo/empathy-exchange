@@ -3,17 +3,17 @@ import 'dart:async';
 
 class CustomSideTooltip extends StatefulWidget {
   final Widget child;
-  Widget? tooltip;
+  final Widget tooltip;
   final AxisDirection preferredDirection;
 
-  CustomSideTooltip(
+  const CustomSideTooltip(
       {required this.child,
-      this.tooltip,
+      required this.tooltip,
       this.preferredDirection = AxisDirection.right,
       super.key});
 
   @override
-  _CustomSideTooltipState createState() => _CustomSideTooltipState();
+  State<CustomSideTooltip> createState() => _CustomSideTooltipState();
 }
 
 class _CustomSideTooltipState extends State<CustomSideTooltip> {
@@ -25,15 +25,14 @@ class _CustomSideTooltipState extends State<CustomSideTooltip> {
 
   void _showTooltip() {
     // Get the position and size of the target widget
-    final RenderBox renderBox =
-        _widgetKey.currentContext!.findRenderObject() as RenderBox;
-    final Offset offset = renderBox.localToGlobal(Offset.zero);
-    final Size size = renderBox.size;
+    // final RenderBox renderBox =
+    //     _widgetKey.currentContext!.findRenderObject() as RenderBox;
+    // final Offset offset = renderBox.localToGlobal(Offset.zero);
+    // final Size size = renderBox.size;
 
     _timer?.cancel();
 
     setState(() {
-      Widget tooltipset = widget.tooltip ?? const SizedBox.shrink();
       Widget mainchild = widget.child;
 
       // tool = SizedBox(
@@ -68,10 +67,10 @@ class _CustomSideTooltipState extends State<CustomSideTooltip> {
                   ? <Widget>[
                       mainchild,
                       const SizedBox(width: 8.0),
-                      tooltipset,
+                      widget.tooltip,
                     ]
                   : <Widget>[
-                      tooltipset,
+                      widget.tooltip,
                       const SizedBox(width: 8.0),
                       mainchild,
                     ]));
