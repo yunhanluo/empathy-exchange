@@ -845,9 +845,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     int crossAxisCount;
     double childAspectRatio;
 
-    if (screenWidth < 700) {
+    if (screenWidth < 750) {
       crossAxisCount = 1;
-      childAspectRatio = 3.5;
+      childAspectRatio = 2.5;
     } else if (screenWidth < 890) {
       crossAxisCount = 2;
       childAspectRatio = 2.5;
