@@ -1,0 +1,110 @@
+import 'package:flutter/material.dart';
+import 'dart:async';
+
+class CustomSideTooltip extends StatefulWidget {
+  final Widget child;
+  final Widget tooltip;
+  final AxisDirection preferredDirection;
+
+  const CustomSideTooltip(
+      {required this.child,
+      required this.tooltip,
+      this.preferredDirection = AxisDirection.right,
+      super.key});
+
+  @override
+  State<CustomSideTooltip> createState() => _CustomSideTooltipState();
+}
+
+class _CustomSideTooltipState extends State<CustomSideTooltip> {
+  final GlobalKey _widgetKey = GlobalKey();
+
+  Timer? _timer;
+
+  Widget? tool;
+
+  void _showTooltip() {
+    // Get the position and size of the target widget
+    // final RenderBox renderBox =
+    //     _widgetKey.currentContext!.findRenderObject() as RenderBox;
+    // final Offset offset = renderBox.localToGlobal(Offset.zero);
+    // final Size size = renderBox.size;
+
+    _timer?.cancel();
+
+    setState(() {
+      Widget mainchild = widget.child;
+
+      // tool = SizedBox(
+      //     child: Stack(children: <Widget>[
+      //   Positioned(
+      //       // Position the tooltip based on the target offset and direction
+      //       left: widget.preferredDirection == AxisDirection.right
+      //           ? offset.dx + size.width + 8.0 // To the right, with padding
+      //           : null,
+      //       right: widget.preferredDirection == AxisDirection.left
+      //           ? MediaQuery.of(context).size.width -
+      //               offset.dx +
+      //               8.0 // To the left
+      //           : null,
+      //       top: offset.dy + (size.height / 2) - 16.0, // Centered vertically
+      //       child: Row(
+      //           children: widget.preferredDirection == AxisDirection.right
+      //               ? <Widget>[
+      //                   mainchild,
+      //                   const SizedBox(width: 8.0),
+      //                   tooltipset,
+      //                 ]
+      //               : <Widget>[
+      //                   tooltipset,
+      //                   const SizedBox(width: 8.0),
+      //                   mainchild,
+      //                 ]))
+      // ]));
+      tool = SizedBox(
+          child: Row(
+              children: widget.preferredDirection == AxisDirection.right
+                  ? <Widget>[
+                      mainchild,
+                      const SizedBox(width: 8.0),
+                      widget.tooltip,
+                    ]
+                  : <Widget>[
+                      widget.tooltip,
+                      const SizedBox(width: 8.0),
+                      mainchild,
+                    ]));
+    });
+  }
+
+  void _hideTooltip() {
+    _timer?.cancel();
+
+    setState(() {
+      tool = widget.child;
+    });
+  }
+
+  @override
+  void dispose() {
+    _hideTooltip();
+
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Use GestureDetector for mobile (long press) and MouseRegion for web/desktop (hover)
+    return GestureDetector(
+      key: _widgetKey,
+      onLongPress: _showTooltip,
+      onLongPressUp: _hideTooltip,
+      child: MouseRegion(
+        onHover: (_) => _showTooltip(),
+        // onExit: (_) => Timer(const Duration(milliseconds: 10), _hideTooltip),
+        onExit: (_) => _hideTooltip(),
+        child: tool ?? widget.child,
+      ),
+    );
+  }
+}

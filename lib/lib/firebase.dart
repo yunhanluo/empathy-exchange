@@ -1,3 +1,5 @@
+import 'dart:js_interop';
+
 import 'package:firebase_database/firebase_database.dart';
 
 class FirebaseUserTools {
@@ -55,7 +57,6 @@ class FirebaseUserTools {
   }
 }
 
-
 class FirebaseChatTools {
   static final DatabaseReference ref = FirebaseDatabase.instance.ref('chats');
 
@@ -97,4 +98,18 @@ class FirebaseChatTools {
   //     save("chats", {});
   //   }
   // }
+}
+
+class FirebaseTools {
+  static List asList(dynamic value) {
+    if (value is Map) {
+      return value.values.toList();
+    } else if (value is JSArray) {
+      return value.toDart;
+    } else if (value is List) {
+      return value;
+    } else {
+      return value as List;
+    }
+  }
 }
