@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:js_interop';
-import 'package:http/http.dart' as http;
 import 'package:profanity_filter/profanity_filter.dart';
 import 'package:empathy_exchange/widgets/material.dart';
 import 'package:empathy_exchange/widgets/message.dart';
 import 'package:empathy_exchange/lib/firebase.dart';
+import 'package:empathy_exchange/services/openai_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
@@ -191,7 +191,9 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
                   sender,
                   pfp,
                   karma));
-              _showNotification(item['text']);
+              if (sender != myToken) {
+                _showNotification(item['text']);
+              }
             } else if (sender == 'system') {
               _messages.add(Message(
                   item["text"],
@@ -272,6 +274,79 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
     }
   }
 
+  Future<void> _analyzeWithAI(String message) async {
+    if (message.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a message to analyze')),
+      );
+      return;
+    }
+
+    // Show loading indicator
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+
+    try {
+      final prompt =
+          'Analyze this message for empathy and emotional intelligence. Provide a brief, constructive response (max 100 words): "$message"';
+
+      final aiResponse = await OpenAIService.sendMessage(
+        message: prompt,
+        maxTokens: 150,
+      );
+
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading dialog
+
+      // Show AI response in a dialog
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('AI Analysis'),
+          content: Text(aiResponse),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Close'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                // Optionally send AI response as a system message
+                _sendAIResponseAsMessage(aiResponse);
+              },
+              child: const Text('Share in Chat'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading dialog
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _sendAIResponseAsMessage(String aiResponse) async {
+    Map data = await FirebaseChatTools.load('/');
+    String name = data.keys.elementAt(chatId);
+    await FirebaseChatTools.listPush('$name/data', {
+      "sender": "system",
+      "text": "AI Analysis: $aiResponse",
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return appInstance(Column(children: [
@@ -335,7 +410,7 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
                 children: <Widget>[
                   Container(
                     padding: const EdgeInsets.only(left: 10, right: 5),
-                    width: MediaQuery.sizeOf(context).width - 60,
+                    width: MediaQuery.sizeOf(context).width - 130,
                     child: TextField(
                       onSubmitted: (String value) {
                         _send(value);
@@ -349,7 +424,19 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
                   ),
                   Container(
                     padding: const EdgeInsets.only(right: 5, top: 5, bottom: 5),
-                    width: 60, // Increased width from 40 to 60
+                    width: 50,
+                    child: IconButton(
+                      onPressed: () {
+                        _analyzeWithAI(_textController.value.text);
+                      },
+                      tooltip: "Analyze with AI",
+                      icon: const Icon(Icons.psychology, size: 24),
+                      color: const Color(0xFF667eea),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.only(right: 5, top: 5, bottom: 5),
+                    width: 60,
                     child: FloatingActionButton(
                       onPressed: () {
                         _send(_textController.value.text);

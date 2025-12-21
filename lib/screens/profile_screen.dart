@@ -25,6 +25,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String? _pairToken;
   String? _bio;
   String? _displayName;
+  List<Map<String, dynamic>> _badges = [];
+  bool _badgesExpanded = false;
+  bool _notificationEnabled = false;
 
   StreamSubscription<DatabaseEvent>? _profileSubscription;
 
@@ -37,6 +40,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _loadProfilePicture(); // Load initial profile picture if it exists
       _loadPairToken(); // Load pair token
       _loadBio(); // Load bio if it exists
+      _loadBadges(); // Load badges
     });
   }
 
@@ -140,6 +144,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _displayName = user.displayName;
         });
       }
+    }
+  }
+
+  Future<void> _loadBadges() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      // Load badges from Firebase - structure: users/{uid}/badges/{badgeId}
+      final badgesData =
+          await FirebaseUserTools.load('${user.uid}/badges') as Map?;
+      if (badgesData != null && mounted) {
+        List<Map<String, dynamic>> badgesList = [];
+
+        // If badges is a Map, convert to list
+        badgesData.forEach((key, value) {
+          if (value is Map) {
+            badgesList.add({
+              'id': key,
+              'giver': value['giver'] ?? 'Badge',
+              'reason': value['reason'] ?? '',
+              'icon': value['icon'] ?? Icons.star,
+              'time': value['time'] ?? '',
+              ...value,
+            });
+          }
+        });
+
+        setState(() {
+          _badges = badgesList;
+        });
+      }
+    } catch (e) {
+      // If badges don't exist yet, that's okay
+      print('Error loading badges: $e');
     }
   }
 
@@ -517,7 +556,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
               const SizedBox(height: 24),
 
-              // Profile Options
+              // Profile Options (including Badges)
               Container(
                 width: double.infinity,
                 decoration: BoxDecoration(
@@ -533,6 +572,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 child: Column(
                   children: [
+                    // Badges Section (Collapsible)
+                    if (_badges.isNotEmpty) ...[
+                      _buildProfileOption(
+                        icon: Icons.workspace_premium,
+                        title: 'Badges',
+                        subtitle: '${_badges.length} badges available',
+                        onTap: () {
+                          setState(() {
+                            _badgesExpanded = !_badgesExpanded;
+                          });
+                        },
+                        trailing: Icon(
+                          _badgesExpanded
+                              ? Icons.expand_less
+                              : Icons.expand_more,
+                          color: Colors.grey[400],
+                          size: 16,
+                        ),
+                      ),
+                      if (_badgesExpanded) ...[
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+                          child: _buildBadgesGrid(),
+                        ),
+                      ],
+                      _buildDivider(),
+                    ],
                     _buildProfileOption(
                       icon: Icons.person_outline,
                       title: 'Edit Profile',
@@ -623,6 +689,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required String title,
     required String subtitle,
     required VoidCallback onTap,
+    Widget? trailing,
   }) {
     return InkWell(
       onTap: onTap,
@@ -667,11 +734,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ],
               ),
             ),
-            Icon(
-              Icons.arrow_forward_ios,
-              color: Colors.grey[400],
-              size: 16,
-            ),
+            trailing ??
+                Icon(
+                  Icons.arrow_forward_ios,
+                  color: Colors.grey[400],
+                  size: 16,
+                ),
           ],
         ),
       ),
@@ -684,6 +752,163 @@ class _ProfileScreenState extends State<ProfileScreen> {
       height: 1,
       color: Colors.grey[200],
     );
+  }
+
+  Widget _buildBadgesGrid() {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const AlwaysScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        childAspectRatio: 2.0,
+      ),
+      itemCount: _badges.length,
+      itemBuilder: (context, index) {
+        final badge = _badges[index];
+        final giver = badge['giver'] as String? ?? 'Badge';
+        final reason = badge['reason'] as String? ?? '';
+        final time = badge['time'] as String? ?? '';
+        final iconData = _getIconData(badge['icon']);
+
+        return _buildBadgeItem(
+          name: giver,
+          description: reason,
+          icon: iconData,
+          time: time,
+        );
+      },
+    );
+  }
+
+  Widget _buildBadgeItem({
+    required String name,
+    required String description,
+    required IconData icon,
+    required String time,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF667eea).withOpacity(0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: const Color(0xFF667eea).withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            icon,
+            size: 20,
+            color: const Color(0xFF667eea),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            'Given by: $name',
+            style: GoogleFonts.nunito(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFF667eea),
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Text(
+              'Reason: $description',
+              style: GoogleFonts.nunito(
+                fontSize: 12,
+                color: Colors.grey[700],
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 5,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Text(
+              'Timestamp: ${formatTimeStamp(time)}',
+              style: GoogleFonts.nunito(
+                fontSize: 12,
+                color: Colors.grey[700],
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  IconData _getIconData(dynamic iconValue) {
+    if (iconValue is int) {
+      // If it's stored as an integer code point
+      return IconData(iconValue, fontFamily: 'MaterialIcons');
+    } else if (iconValue is String) {
+      // Map common icon names to IconData
+      switch (iconValue.toLowerCase()) {
+        case 'star':
+          return Icons.star;
+        case 'favorite':
+          return Icons.favorite;
+        case 'thumb_up':
+          return Icons.thumb_up;
+        case 'emoji_events':
+          return Icons.emoji_events;
+        case 'local_fire_department':
+          return Icons.local_fire_department;
+        case 'diamond':
+          return Icons.diamond;
+        case 'celebration':
+          return Icons.celebration;
+        case 'workspace_premium':
+          return Icons.workspace_premium;
+        default:
+          return Icons.star;
+      }
+    }
+    // These are all random icons. Later, we can add different types of icons the user can choose from. For different things.
+    return Icons.star;
+  }
+
+  String formatTimeStamp(String timeStamp) {
+    final DateTime dateTime = DateTime.parse(timeStamp);
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ];
+    final String month = months[dateTime.month - 1];
+    final int day = dateTime.day;
+    final int year = dateTime.year;
+
+    int hour = dateTime.hour;
+    final String thing = hour < 12 ? 'AM' : 'PM';
+    hour = hour % 12;
+    if (hour == 0) hour = 12;
+
+    final String minute = dateTime.minute.toString().padLeft(2, '0');
+
+    return '$month $day, $year - $hour:$minute $thing';
   }
 
   Widget _buildSupportRow(String label, String value) {
@@ -714,8 +939,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ],
     );
   }
-
-  bool _notificationEnabled = false;
 
   void _editProfile(BuildContext context) async {
     final user = FirebaseAuth.instance.currentUser;
@@ -982,10 +1205,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void _showSecuritySettings(BuildContext context) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
-
-    // Check if user has email/password provider
-    final hasEmailPassword =
-        user.providerData.any((provider) => provider.providerId == 'password');
 
     // Get account creation date
     final creationDate = user.metadata.creationTime;
