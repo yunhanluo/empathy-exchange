@@ -147,6 +147,48 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  Future<String?> _findUidFromGiver(String giver) async {
+    try {
+      // First, try if giver is already a UID
+      try {
+        final userData = await FirebaseUserTools.load(giver) as Map?;
+        if (userData != null) {
+          return giver; // It's already a UID
+        }
+      } catch (_) {
+        // Not a UID, continue to search
+      }
+
+      // Load all users to search
+      final allUsers = await FirebaseUserTools.load('/') as Map?;
+      if (allUsers == null) return null;
+
+      // Search through all users
+      for (String uid in allUsers.keys) {
+        try {
+          final userData = await FirebaseUserTools.load(uid) as Map?;
+          if (userData != null) {
+            // Check if email matches
+            final email = userData['email'] as String?;
+            if (email == giver) {
+              return uid;
+            }
+            // Check if pairToken matches
+            final pairToken = userData['pairToken'] as String?;
+            if (pairToken == giver) {
+              return uid;
+            }
+          }
+        } catch (_) {
+          // Continue searching
+        }
+      }
+    } catch (e) {
+      print('Error finding UID from giver: $e');
+    }
+    return null;
+  }
+
   Future<void> _loadBadges() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
@@ -171,6 +213,50 @@ class _ProfileScreenState extends State<ProfileScreen> {
             });
           }
         });
+
+        for (var badge in badgesList) {
+          final giver = badge['giver'] as String?;
+          if (giver != null) {
+            try {
+              // Find the UID from the giver value (could be email, token, or UID)
+              final giverUid = await _findUidFromGiver(giver);
+              if (giverUid != null) {
+                // Load the giver's data using the UID
+                final giverData =
+                    await FirebaseUserTools.load(giverUid) as Map?;
+                if (giverData != null) {
+                  final displayName = giverData['displayName'] as String?;
+                  final email = giverData['email'] as String?;
+
+                  // Store display name
+                  if (displayName != null && displayName.isNotEmpty) {
+                    badge['giverDisplayName'] = displayName;
+                  } else {
+                    // Fallback to email if displayName doesn't exist
+                    badge['giverDisplayName'] = email ?? giver;
+                  }
+
+                  // Store email separately
+                  badge['giverEmail'] = email ?? giver;
+                } else {
+                  badge['giverDisplayName'] = giver;
+                  badge['giverEmail'] = giver;
+                }
+              } else {
+                // Couldn't find UID, use giver value as-is
+                badge['giverDisplayName'] = giver;
+                badge['giverEmail'] = giver;
+              }
+            } catch (e) {
+              print('Error loading giver display name: $e');
+              badge['giverDisplayName'] = giver;
+              badge['giverEmail'] = giver;
+            }
+          } else {
+            badge['giverDisplayName'] = 'Badge';
+            badge['giverEmail'] = '';
+          }
+        }
 
         setState(() {
           _badges = badgesList;
@@ -755,25 +841,44 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildBadgesGrid() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    int crossAxisCount;
+    double childAspectRatio;
+
+    if (screenWidth < 700) {
+      crossAxisCount = 1;
+      childAspectRatio = 3.5;
+    } else if (screenWidth < 890) {
+      crossAxisCount = 2;
+      childAspectRatio = 2.5;
+    } else {
+      crossAxisCount = 3;
+      childAspectRatio = 2.0;
+    }
     return GridView.builder(
       shrinkWrap: true,
-      physics: const AlwaysScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossAxisCount,
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
-        childAspectRatio: 2.0,
+        childAspectRatio: childAspectRatio,
       ),
       itemCount: _badges.length,
       itemBuilder: (context, index) {
         final badge = _badges[index];
-        final giver = badge['giver'] as String? ?? 'Badge';
+        // Use display name if available, otherwise fall back to giver value
+        final giverDisplayName = badge['giverDisplayName'] as String? ??
+            badge['giver'] as String? ??
+            'Badge';
+        final giverEmail = badge['giverEmail'] as String? ?? '';
         final reason = badge['reason'] as String? ?? '';
         final time = badge['time'] as String? ?? '';
         final iconData = _getIconData(badge['icon']);
 
         return _buildBadgeItem(
-          name: giver,
+          name: giverDisplayName,
+          email: giverEmail,
           description: reason,
           icon: iconData,
           time: time,
@@ -784,6 +889,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildBadgeItem({
     required String name,
+    required String email,
     required String description,
     required IconData icon,
     required String time,
@@ -797,44 +903,74 @@ class _ProfileScreenState extends State<ProfileScreen> {
           width: 1,
         ),
       ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            icon,
-            size: 20,
-            color: const Color(0xFF667eea),
-          ),
-          const SizedBox(height: 5),
-          Text(
-            'Given by: $name',
-            style: GoogleFonts.nunito(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 20,
               color: const Color(0xFF667eea),
             ),
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 4),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Text(
-              'Reason: $description',
+            const SizedBox(height: 5),
+            Text(
+              'Given by: $name',
               style: GoogleFonts.nunito(
-                fontSize: 12,
-                color: Colors.grey[700],
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF667eea),
               ),
               textAlign: TextAlign.center,
-              maxLines: 5,
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
-          ),
-          const SizedBox(height: 4),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Text(
+            if (email.isNotEmpty) ...[
+              const SizedBox(height: 2),
+              Text(
+                email,
+                style: GoogleFonts.nunito(
+                  fontSize: 13,
+                  color: Colors.grey[600],
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+            const SizedBox(height: 4),
+            Builder(
+              builder: (context) {
+                final scrollController = ScrollController();
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Scrollbar(
+                      controller: scrollController,
+                      thumbVisibility: true,
+                      thickness: 2,
+                      radius: const Radius.circular(2),
+                      child: SingleChildScrollView(
+                        controller: scrollController,
+                        scrollDirection: Axis.horizontal,
+                        child: Text(
+                          'Reason: $description',
+                          style: GoogleFonts.nunito(
+                            fontSize: 12,
+                            color: Colors.grey[700],
+                          ),
+                          textAlign: TextAlign.center,
+                          softWrap: false,
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+            const SizedBox(height: 8),
+            Text(
               'Timestamp: ${formatTimeStamp(time)}',
               style: GoogleFonts.nunito(
                 fontSize: 12,
@@ -844,8 +980,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
