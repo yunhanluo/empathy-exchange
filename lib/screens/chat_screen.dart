@@ -44,6 +44,7 @@ class _ChatTalkPage extends StatefulWidget {
 
 class _ChatTalkPageState extends State<_ChatTalkPage> {
   final _textController = TextEditingController();
+  final _chatNameController = TextEditingController();
   final _textFocus = FocusNode();
 
   final _scrollController = ScrollController();
@@ -53,9 +54,12 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
   StreamSubscription<DatabaseEvent>? _subscription;
   DatabaseReference? thisRef;
 
+  String? _actualTitle;
+
   @override
   void dispose() {
     _textController.dispose();
+    _chatNameController.dispose();
     _textFocus.dispose();
 
     _scrollController.dispose();
@@ -70,6 +74,8 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
     super.initState();
 
     () async {
+      _actualTitle = widget.title;
+
       Map data = await FirebaseChatTools.load('/');
       Map chat = data.values.elementAt(widget.chatId) as Map;
       dynamic items = chat['data'];
@@ -90,10 +96,10 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
       String myPfp = await FirebaseUserTools.load(
           'profilePictures/$myEmailKey/profilePicture');
 
-      Map uData = await FirebaseUserTools.load('/');
+      dynamic uData = await FirebaseUserTools.load('/');
       Map<String, int> theirKarmas = {};
       int myKarma = 0;
-      for (Map user in uData.values) {
+      for (Map user in FirebaseTools.asList(uData)) {
         if (!user.containsKey('pairToken')) continue;
 
         String token = user['pairToken'];
@@ -114,8 +120,8 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
         }
       }
 
-      for (JSAny? item
-          in FirebaseTools.asList(items).take(items.values.length - 1)) {
+      List itemList = FirebaseTools.asList(items);
+      for (JSAny? item in itemList.take(itemList.length - 1)) {
         setState(() {
           Map message = item as Map;
           _messages.add(Message(
@@ -134,7 +140,8 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
                           "iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAACX0lEQVR4AbyVS+tNURiH999AGfoKBhRFLgkRE5QBGcjAgImRO7lfcr/lzsCQlMQEycDEpeSWXIqk+AxGJhLPs//r1bv3uTgTTr/nfdd69zrrd/Zee60zovrHn/9mMJ4buQTdNJHiC/jV4hn9MdBXcQcfGLUGLkJoLg0nfUeeDm3NoPAFHONYmp0Kgynl0lryBVCPCW/hByyEoRZO+o2aekS4Ah0KgzdcmQlqHeE8qMmEkfAA2npCYTRoRKpWEs5CQ2Fg8TlhM6j1hHOQ9ZSOj0Ne0w5p5N3Z30gIQ5pVlQ0snDEUNpDzLxpFP+Qj1Sj65tkG8HGRhpUNfFus/iRMAOUvClMnHaIopFo+wrpB8A6/k9VYg2SDyxZgEXyEMNlE+zRkhen8XKS9DNR1g2SDWORY0Gzi2pzyC4V4bR+WfqT7pTG15I41iHrkbLKF4klQcwjv4RX0Vb6DXgOzyVYGnQA1yfA3BjFwjmyyjcJxGEjZwH3gl5YbupBNtnP9GLS1oBReltxYgxWleKPkSL6+cdh5ZkV9B42jkHWvdFaX3DD4GkWy234c2c3U67DjcrWTcARCnl22fQHMDQML8wzgwfWJHFpCww2WWUpN7SIcBuXrG3PY7zDwBL1aXxkOt0hOepfc1m0KsRl30z4EyjnMNXmR6wJhFcRB5870MS2m1pa1vCZ7GHAQGupm4ACPh3yrdyhqlLFGuVa8eXvpHYA/6mXgAG/Vx+Ni5+PZa+JfpoedY25SiMe1j/Z+qNXPoB5A+AzTwIkys6jFW0OzyvvkmgUZxMBxg6KJP8L/6vo7vwEAAP//QQI5RQAAAAZJREFUAwC4tmkxSpZfbQAAAABJRU5ErkJggg=="),
               (message["sender"] == widget.myToken
                   ? myKarma
-                  : theirKarmas[message['sender']] ?? 0), widget.chatId));
+                  : theirKarmas[message['sender']] ?? 0),
+              widget.chatId));
         });
       }
 
@@ -158,7 +165,7 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
 
             Map uData = await FirebaseUserTools.load('/');
             karma = 0;
-            for (Map user in uData.values) {
+            for (Map user in FirebaseTools.asList(uData)) {
               if (!user.containsKey('pairToken')) continue;
 
               if (user['pairToken'] == sender) {
@@ -345,18 +352,70 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
     });
   }
 
+  void _renameChat(String newName) async {
+    if (newName.trim().isEmpty) return;
+
+    Map data = await FirebaseChatTools.load('/');
+    String chatKey = data.keys.elementAt(widget.chatId);
+
+    await FirebaseChatTools.set(
+        '/$chatKey/title', filter.censor(newName.trim()));
+    
+    setState(() {
+      _actualTitle = filter.censor(newName.trim());
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return appInstance(Column(children: [
       AppBar(
-        leading: IconButton(
-          onPressed: () {
-            _ppage = 0;
-            Navigator.pop(context);
-          },
-          icon: const Icon(Icons.arrow_back, color: Colors.black), // Back icon
-        ),
-        title: Center(child: Text(widget.title)),
+        title: Center(
+            child: Row(children: <Widget>[
+          Text(_actualTitle ?? widget.title),
+          const SizedBox(width: 40),
+          IconButton(
+              onPressed: () {
+                showDialog(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return AlertDialog(
+                        backgroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        title: const Text("Edit Chat Name"),
+                        content: TextField(
+                          decoration: const InputDecoration(
+                            hintText: "Enter new chat name...",
+                          ),
+                          onSubmitted: (String value) async {
+                            _renameChat(value);
+                            Navigator.of(context).pop();
+                          },
+                          controller: _chatNameController,
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                            },
+                            child: const Text("Cancel"),
+                          ),
+                          TextButton(
+                            onPressed: () async {
+                              _renameChat(_chatNameController.text);
+                              setState(() {});
+                              Navigator.of(context).pop();
+                            },
+                            child: const Text("Okay"),
+                          ),
+                        ],
+                      );
+                    });
+              },
+              icon: const Icon(Icons.edit))
+        ])),
       ),
       Column(
         children: <Widget>[
@@ -476,7 +535,7 @@ class _ChatPageState extends State<ChatPage> {
           await FirebaseChatTools.listPush('/', {
             "tokens": parts,
             "title":
-                '${await FirebaseUserTools.load('${FirebaseAuth.instance.currentUser!.uid}/displayName')} & ${await FirebaseUserTools.load('${FirebaseUserTools.getUidFromToken(enteredUid)}/displayName')}',
+                '${await FirebaseUserTools.load('${FirebaseAuth.instance.currentUser!.uid}/displayName')} & ${await FirebaseUserTools.load('${await FirebaseUserTools.getUidFromToken(enteredUid)}/displayName')}',
             "data": [
               {"text": "This chat was created.", "sender": "system"},
             ],
@@ -496,7 +555,8 @@ class _ChatPageState extends State<ChatPage> {
     });
   }
 
-  void _addChatTalkPage(String myToken, List oTokens, String? title) async {
+  void _addChatTalkPage(
+      String myToken, List oTokens, String? title, int cid) async {
     List<Widget> pfps = [];
     for (String token in oTokens) {
       if (await FirebaseUserTools.getUidFromToken(token) == null) {
@@ -513,14 +573,16 @@ class _ChatPageState extends State<ChatPage> {
           fit: BoxFit.cover));
     }
 
+    final int thisid = _chats.length + 1;
+
     _chatPages.add(_ChatTalkPage(
         myToken: myToken,
         otherTokens: oTokens,
-        chatId: _ppage,
+        chatId: cid,
         title: title ?? "Chat ${_chats.length + 1}"));
     _chats.add(TextButton(
       onPressed: () {
-        _ppage = _chats.length;
+        _ppage = thisid;
         Navigator.push(
             context,
             MaterialPageRoute<void>(
@@ -586,7 +648,9 @@ class _ChatPageState extends State<ChatPage> {
 
     String myToken = await FirebaseUserTools.load(
         '${FirebaseAuth.instance.currentUser!.uid}/pairToken');
-    for (JSAny? chat in (chatArray.dartify() as Map).values) {
+    List chats = FirebaseTools.asList(chatArray.dartify());
+    for (int i = 0; i < chats.length; i++) {
+      JSAny? chat = chats[i];
       Map data = chat.dartify() as Map;
 
       if ((data['tokens'] as Iterable).contains(myToken)) {
@@ -595,7 +659,8 @@ class _ChatPageState extends State<ChatPage> {
             FirebaseTools.asList(data['tokens'])
                 .where((token) => token != myToken)
                 .toList(),
-            data['title']);
+            data['title'],
+            i);
       }
     }
 
