@@ -162,6 +162,7 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
                 sender.replaceAll('.', '_dot_').replaceAll('@', '_at_');
             pfp = await FirebaseUserTools.load(
                 'profilePictures/$emailKey/profilePicture');
+            _analyzeWithAI();
 
             Map uData = await FirebaseUserTools.load('/');
             karma = 0;
@@ -279,61 +280,12 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
     }
   }
 
-  Future<void> _analyzeWithAI(String message) async {
-    if (message.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a message to analyze')),
-      );
-      return;
-    }
-
-    // Show loading indicator
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(),
-      ),
-    );
-
+  Future<void> _analyzeWithAI() async {
     try {
-      final prompt =
-          'Analyze this message for empathy and emotional intelligence. Provide a brief, constructive response (max 100 words): "$message"';
-
-      final aiResponse = await OpenAIService.sendMessage(
-        message: prompt,
-        maxTokens: 150,
-      );
-
-      if (!mounted) return;
-      Navigator.pop(context); // Close loading dialog
-
-      // Show AI response in a dialog
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('AI Analysis'),
-          content: Text(aiResponse),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Close'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                // Optionally send AI response as a system message
-                _sendAIResponseAsMessage(aiResponse);
-              },
-              child: const Text('Share in Chat'),
-            ),
-          ],
-        ),
+      await OpenAIService.analyzeMessage(
+        chatId: widget.chatId,
       );
     } catch (e) {
-      if (!mounted) return;
-      Navigator.pop(context); // Close loading dialog
-
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error: ${e.toString()}'),
@@ -341,15 +293,6 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
         ),
       );
     }
-  }
-
-  Future<void> _sendAIResponseAsMessage(String aiResponse) async {
-    Map data = await FirebaseChatTools.load('/');
-    String name = data.keys.elementAt(widget.chatId);
-    await FirebaseChatTools.listPush('$name/data', {
-      "sender": "system",
-      "text": "AI Analysis: $aiResponse",
-    });
   }
 
   void _renameChat(String newName) async {
@@ -360,7 +303,7 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
 
     await FirebaseChatTools.set(
         '/$chatKey/title', filter.censor(newName.trim()));
-    
+
     setState(() {
       _actualTitle = filter.censor(newName.trim());
     });
@@ -484,7 +427,7 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
                     width: 50,
                     child: IconButton(
                       onPressed: () {
-                        _analyzeWithAI(_textController.value.text);
+                        _analyzeWithAI();
                       },
                       tooltip: "Analyze with AI",
                       icon: const Icon(Icons.psychology, size: 24),
