@@ -16,7 +16,8 @@ class OpenAIService {
           You are given a summary of the conversation so far. Taking this into account, look at the given message and assign or take away kindness points to the user 
           who has sent that message. The points given or taken away will range from -10 to 10, with -10 being a very negative interaction and 10 being
           a very positive one. Your response must be a json string with reasoning, 
-          a string, and points, an integer. Your reasoning should be concise. Make sure that it's not too similar to the given summary.'''
+          a string, and points, an integer. Your reasoning should be concise. Make sure that it's not too similar to the given summary.
+          If possible, include a message field with your advice, a comment, or something uplifting. It is fine if there is nothing to say.'''
     }
   ];
 
@@ -152,10 +153,12 @@ class OpenAIService {
         final evalData = jsonDecode(evalResponse.body);
         String evaluationText =
             evalData['choices']?[0]?['message']?['content'] ?? '';
-        print('Evaluation text (hopefully json): $evaluationText');
+        print('Evaluation text: $evaluationText');
         Map<String, dynamic> jsonResponse = jsonDecode(evaluationText);
         String reasoning = jsonResponse['reasoning'] ?? '';
+        String message = jsonResponse['message'] ?? '';
         int points = jsonResponse['points'] ?? 0;
+        print('Points! $points');
 
         // Write analysis results directly into the chat as system messages
         await FirebaseChatTools.listPush('$chatKey/data', {
@@ -167,12 +170,25 @@ class OpenAIService {
           'sender': 'system',
           'text':
               '''The AI has evaluated the messages for the user $displayName: \n $points points have been ${points > 0 ? 'added' : 'deducted'} 
-              to the user $displayName's total. \n The AI has given the following reasoning: "$reasoning"''',
+              to the user $displayName's total. \n The AI has given the following reasoning: "$reasoning. \n
+              ${message == '' ? '' : 'The AI would like to share the following message:'} $message}"''',
         });
 
         await FirebaseChatTools.set('$chatKey/summary', summaryText);
 
-        print('Analysis written directly to chat $chatKey/data');
+        dynamic oldPoints = await FirebaseUserTools.load('${user.uid}/karma');
+
+        int currentKarma = 0;
+        if (oldPoints is int) {
+          currentKarma = oldPoints;
+        } else if (oldPoints is String) {
+          currentKarma = int.tryParse(oldPoints) ?? 0;
+        } else if (oldPoints is double) {
+          currentKarma = oldPoints.toInt();
+        } else {
+          currentKarma = int.tryParse(oldPoints.toString()) ?? 0;
+        }
+        await FirebaseUserTools.set('${user.uid}/karma', currentKarma + points);
       }
     } catch (e) {
       print('OpenAI Error: $e');
