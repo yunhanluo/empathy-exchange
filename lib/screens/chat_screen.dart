@@ -55,6 +55,7 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
   DatabaseReference? thisRef;
 
   String? _actualTitle;
+  bool _aiAnalysisEnabled = false;
 
   @override
   void dispose() {
@@ -162,7 +163,10 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
                 sender.replaceAll('.', '_dot_').replaceAll('@', '_at_');
             pfp = await FirebaseUserTools.load(
                 'profilePictures/$emailKey/profilePicture');
-            _analyzeWithAI();
+            print("Look! It's now ${_aiAnalysisEnabled}");
+            if (_aiAnalysisEnabled) {
+              _analyzeWithAI();
+            }
 
             Map uData = await FirebaseUserTools.load('/');
             karma = 0;
@@ -427,11 +431,21 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
                     width: 50,
                     child: IconButton(
                       onPressed: () {
-                        _analyzeWithAI();
+                        setState(() {
+                          _aiAnalysisEnabled = !_aiAnalysisEnabled;
+                          print("Look! It's now ${_aiAnalysisEnabled}");
+                        });
                       },
-                      tooltip: "Analyze with AI",
-                      icon: const Icon(Icons.psychology, size: 24),
-                      color: const Color(0xFF667eea),
+                      tooltip: _aiAnalysisEnabled
+                          ? "Disable AI Analysis (Your End Only)"
+                          : "Enable AI Analysis (Your End Only)",
+                      icon: _aiAnalysisEnabled
+                          ? const Icon(Icons.psychology, size: 24)
+                          : const Icon(Icons.cancel,
+                              size: 20, color: Colors.red),
+                      color: _aiAnalysisEnabled
+                          ? const Color(0xFF667eea)
+                          : Colors.grey,
                     ),
                   ),
                   Container(
