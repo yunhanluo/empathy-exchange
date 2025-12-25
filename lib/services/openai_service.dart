@@ -17,7 +17,8 @@ class OpenAIService {
           who has sent that message. The points given or taken away will range from -10 to 10, with -10 being a very negative interaction and 10 being
           a very positive one. Your response must be a json string with reasoning, 
           a string, and points, an integer. Your reasoning should be concise. Make sure that it's not too similar to the given summary.
-          If possible, include a message field with your advice, a comment, or something uplifting. It is fine if there is nothing to say.'''
+          If possible, include a message field with your advice, a comment, or something uplifting. It is fine if there is nothing to say.
+          This field must be called message. These should be the ONLY FIELDS INCLUDED. Or else I will be forced to create a JSON schema.'''
     }
   ];
 
@@ -49,8 +50,10 @@ class OpenAIService {
       // Load chat data
       Map data = await FirebaseChatTools.load('/');
       String chatKey = data.keys.elementAt(chatId);
-      final String summary = await FirebaseChatTools.load('/$chatKey/summary');
 
+      final String summary = await FirebaseChatTools.load('$chatKey/summary');
+      dynamic users = await FirebaseChatTools.load('$chatKey/tokens');
+      List<String> userList = FirebaseTools.asList(users).cast<String>(); //Hmm
       dynamic messagesSnapshot = await FirebaseChatTools.load('$chatKey/data');
 
       // Build messages list - convert to proper types
@@ -71,9 +74,49 @@ class OpenAIService {
 
       int chatLength = entries.length;
 
+      Map<String, Map<int, int>> karmaHistory;
+      try {
+        dynamic karmaHistoryRaw =
+            await FirebaseChatTools.load('$chatKey/karmaHistory');
+
+        // Convert from Map<Object?, Object?> to Map<String, Map<int, int>>
+        karmaHistory = {};
+        if (karmaHistoryRaw is Map) {
+          karmaHistoryRaw.forEach((key, value) {
+            String userKey = key.toString();
+            Map<int, int> userHistory = {};
+            if (value is Map) {
+              value.forEach((k, v) {
+                int messageCount =
+                    k is int ? k : int.tryParse(k.toString()) ?? 0;
+                int karmaValue = v is int ? v : int.tryParse(v.toString()) ?? 0;
+                userHistory[messageCount] = karmaValue;
+              });
+            }
+            karmaHistory[userKey] = userHistory;
+          });
+        }
+      } catch (e) {
+        print('Urk!!!!!!!! Not good!');
+        print('Error: $e');
+        karmaHistory = {};
+        for (String user in userList) {
+          karmaHistory[user.replaceAll('.', '_dot_').replaceAll('@', '_at_')] =
+              {
+            (chatLength - 5 > 0
+                ? chatLength % 5 == 0
+                    ? chatLength - 5
+                    : chatLength - (chatLength % 5)
+                : 0): 0
+          };
+        }
+        await FirebaseChatTools.set('$chatKey/karmaHistory', karmaHistory);
+      }
+
       // Only analyze if chat length is divisible by 5
       if (chatLength > 0 && chatLength % 5 == 0) {
         print("Creating summary");
+        print("Chat length: $chatLength");
         List<MapEntry<String, dynamic>> recentEntries =
             entries.length > 5 ? entries.sublist(entries.length - 5) : entries;
 
@@ -158,23 +201,35 @@ class OpenAIService {
         String reasoning = jsonResponse['reasoning'] ?? '';
         String message = jsonResponse['message'] ?? '';
         int points = jsonResponse['points'] ?? 0;
-        print('Points! $points');
 
         // Write analysis results directly into the chat as system messages
-        await FirebaseChatTools.listPush('$chatKey/data', {
-          'sender': 'system',
-          'text': 'The AI has summarized the conversation: \n "$summaryText"',
-        });
+        //   await FirebaseChatTools.listPush('$chatKey/data', {
+        //   'sender': 'system',
+        //    'text': 'The AI has summarized the conversation: \n "$summaryText"',
+        //   }); //We might not need that.
+
+        await FirebaseChatTools.set('$chatKey/summary', summaryText);
+        String formattedEmailKey =
+            email.replaceAll('.', '_dot_').replaceAll('@', '_at_');
+
+        if (karmaHistory[formattedEmailKey] == null) {
+          karmaHistory[formattedEmailKey]?[(chatLength - 5 > 0
+              ? chatLength % 5 == 0
+                  ? chatLength - 5
+                  : chatLength - (chatLength % 5)
+              : 0)] = 0;
+        }
+        karmaHistory[formattedEmailKey]?[chatLength] = points;
+
+        print("Karma history: $karmaHistory");
+
+        await FirebaseChatTools.set('$chatKey/karmaHistory', karmaHistory);
 
         await FirebaseChatTools.listPush('$chatKey/data', {
           'sender': 'system',
           'text':
-              '''The AI has evaluated the messages for the user $displayName: \n $points points have been ${points > 0 ? 'added' : 'deducted'} 
-              to the user $displayName's total. \n The AI has given the following reasoning: "$reasoning. \n
-              ${message == '' ? '' : 'The AI would like to share the following message:'} $message}"''',
+              '''The AI has evaluated the messages for $displayName. \n $points points have been ${points >= 0 ? 'added' : 'deducted'} ${points >= 0 ? 'to' : 'from'} $displayName's total. \n \n The AI has given the following reasoning: "$reasoning \n \n ${message == '' ? '' : 'The AI would like to share the following message:'} $message''',
         });
-
-        await FirebaseChatTools.set('$chatKey/summary', summaryText);
 
         dynamic oldPoints = await FirebaseUserTools.load('${user.uid}/karma');
 

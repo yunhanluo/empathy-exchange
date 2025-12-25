@@ -10,12 +10,37 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:fl_chart/fl_chart.dart';
+import 'dart:math';
 // ignore: deprecated_member_use, avoid_web_libraries_in_flutter
 import 'dart:html' as html;
 
 int _ppage = 0;
 
 final ProfanityFilter filter = ProfanityFilter();
+
+typedef KarmaHistoryRecord = ({
+  String user,
+  List<FlSpot> history,
+  Color color,
+});
+
+final List<Color> colorPalette = [
+  Colors.blue,
+  Colors.red,
+  Colors.green,
+  Colors.orange,
+  Colors.purple,
+  Colors.teal,
+  Colors.pink,
+  Colors.amber,
+];
+
+Color getColorForUser(String user) {
+  final hash = user.hashCode;
+  final index = hash.abs() % colorPalette.length;
+  return colorPalette[index];
+}
 
 class ChatPage extends StatefulWidget {
   const ChatPage({super.key});
@@ -313,6 +338,60 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
     });
   }
 
+  Future<List<KarmaHistoryRecord>> _formatKarmaHistory() async {
+    Map data = await FirebaseChatTools.load('/');
+    String chatKey = data.keys.elementAt(widget.chatId).toString();
+
+    if (!await FirebaseChatTools.exists('$chatKey/karmaHistory')) {
+      return [];
+    }
+
+    dynamic karmaHistoryRaw =
+        await FirebaseChatTools.load('$chatKey/karmaHistory');
+
+    // Convert from Map<Object?, Object?> to Map<String, Map<int, int>>
+    Map<String, Map<int, int>> karmaHistory = {};
+    if (karmaHistoryRaw is Map) {
+      karmaHistoryRaw.forEach((key, value) {
+        String userKey = key.toString();
+        Map<int, int> userHistory = {};
+        if (value is Map) {
+          value.forEach((k, v) {
+            int messageCount = k is int ? k : int.tryParse(k.toString()) ?? 0;
+            int karmaValue = v is int ? v : int.tryParse(v.toString()) ?? 0;
+            userHistory[messageCount] = karmaValue;
+          });
+        }
+        karmaHistory[userKey] = userHistory;
+      });
+    }
+    List<KarmaHistoryRecord> formattedHistory = [];
+    int lastMessageTime = karmaHistory.values
+        .expand((userHistory) => userHistory.keys)
+        .reduce(max);
+
+    for (MapEntry<String, Map<int, int>> entry in karmaHistory.entries) {
+      String user = entry.key;
+
+      List<FlSpot> spots = [];
+      int lastMessageValue = 0;
+      for (int i = entry.value.keys.first; i <= lastMessageTime; i += 5) {
+        if (entry.value.containsKey(i)) {
+          int karmaValue = entry.value[i]!;
+          spots.add(FlSpot(i.toDouble(),
+              lastMessageValue.toDouble() + karmaValue.toDouble()));
+          lastMessageValue += karmaValue;
+        } else {
+          spots.add(FlSpot(i.toDouble(), lastMessageValue.toDouble()));
+        }
+      }
+
+      var record = (user: user, history: spots, color: getColorForUser(user));
+      formattedHistory.add(record);
+    }
+    return formattedHistory;
+  }
+
   @override
   Widget build(BuildContext context) {
     return appInstance(Column(children: [
@@ -361,7 +440,185 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
                       );
                     });
               },
-              icon: const Icon(Icons.edit))
+              icon: const Icon(Icons.edit)),
+          IconButton(
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (BuildContext context) {
+                    return AlertDialog(
+                        backgroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        title: const Text("Karma History Chart"),
+                        content: SizedBox(
+                            height: 350,
+                            width: 300,
+                            child: FutureBuilder<List<KarmaHistoryRecord>>(
+                              future: _formatKarmaHistory(),
+                              builder: (context, snapshot) {
+                                if (snapshot.connectionState ==
+                                    ConnectionState.waiting) {
+                                  return const Center(
+                                      child: CircularProgressIndicator());
+                                }
+
+                                if (snapshot.hasError ||
+                                    !snapshot.hasData ||
+                                    snapshot.data!.isEmpty) {
+                                  return const Center(
+                                      child:
+                                          Text('No karma history available'));
+                                }
+
+                                final karmaHistory = snapshot.data!;
+
+                                return Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    // Legend
+                                    Wrap(
+                                      spacing: 12,
+                                      runSpacing: 8,
+                                      alignment: WrapAlignment.center,
+                                      children: karmaHistory.map((record) {
+                                        return Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Container(
+                                              width: 16,
+                                              height: 16,
+                                              decoration: BoxDecoration(
+                                                color: record.color,
+                                                shape: BoxShape.circle,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              record.user
+                                                  .replaceAll('_at_', '@')
+                                                  .replaceAll('_dot_', '.'),
+                                              style: const TextStyle(
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                          ],
+                                        );
+                                      }).toList(),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    // Chart
+                                    Expanded(
+                                      child: LineChart(
+                                        LineChartData(
+                                          gridData:
+                                              const FlGridData(show: true),
+                                          titlesData: FlTitlesData(
+                                            leftTitles: AxisTitles(
+                                              axisNameWidget: Tooltip(
+                                                message:
+                                                    'This tracks how many karma points you have gained or lost during this chat.',
+                                                child: Text(
+                                                  'Karma Points',
+                                                  style: TextStyle(
+                                                    color: Color(0xff37434d),
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ),
+                                              sideTitles:
+                                                  SideTitles(showTitles: false),
+                                            ),
+                                            topTitles: AxisTitles(
+                                              sideTitles:
+                                                  SideTitles(showTitles: false),
+                                            ),
+                                            rightTitles: AxisTitles(
+                                              sideTitles: SideTitles(
+                                                showTitles: true,
+                                                reservedSize: 40,
+                                                getTitlesWidget: (value, meta) {
+                                                  return Text(
+                                                    value.toInt().toString(),
+                                                    style: const TextStyle(
+                                                      color: Color(0xff37434d),
+                                                      fontSize: 10,
+                                                    ),
+                                                  );
+                                                },
+                                              ),
+                                            ),
+                                            bottomTitles: AxisTitles(
+                                              axisNameWidget: Tooltip(
+                                                message:
+                                                    'Point deductions or additions are made every 5 messages. The x-axis shows how your kindness points have changed over time.',
+                                                child: Text(
+                                                  'Time',
+                                                  style: TextStyle(
+                                                    color: Color(0xff37434d),
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ),
+                                              sideTitles: SideTitles(
+                                                showTitles: true,
+                                                reservedSize: 30,
+                                                getTitlesWidget: (value, meta) {
+                                                  // Only show labels for values divisible by 5
+                                                  if (value % 5 == 0) {
+                                                    return Text(
+                                                      value.toInt().toString(),
+                                                      style: const TextStyle(
+                                                        color:
+                                                            Color(0xff37434d),
+                                                        fontSize: 10,
+                                                      ),
+                                                    );
+                                                  }
+                                                  return const Text('');
+                                                },
+                                              ),
+                                            ),
+                                          ),
+                                          borderData: FlBorderData(
+                                            show: true,
+                                            border: Border.all(
+                                                color: const Color(0xff37434d)),
+                                          ),
+                                          lineBarsData:
+                                              karmaHistory.map((record) {
+                                            return LineChartBarData(
+                                              spots: record.history,
+                                              isCurved: true,
+                                              color: record.color,
+                                              barWidth: 3,
+                                              dotData:
+                                                  const FlDotData(show: true),
+                                              belowBarData:
+                                                  BarAreaData(show: false),
+                                            );
+                                          }).toList(),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              },
+                            )),
+                        actions: [
+                          TextButton(
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                            },
+                            child: const Text("Close"),
+                          )
+                        ]);
+                  },
+                );
+              },
+              tooltip: "Show Karma Chart",
+              icon: const Icon(Icons.show_chart))
         ])),
       ),
       Column(
