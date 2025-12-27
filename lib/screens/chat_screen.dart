@@ -76,6 +76,8 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
 
   final List<Widget> _messages = <Widget>[];
 
+  Widget _evaluateButton = const SizedBox.shrink();
+
   StreamSubscription<DatabaseEvent>? _subscription;
   DatabaseReference? thisRef;
 
@@ -247,6 +249,21 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
         });
       });
 
+      final thing = (FirebaseTools.asList(await FirebaseChatTools.load('/'))
+          .elementAt(widget.chatId) as Map);
+      final Widget evalTemp = thing['owner'] == widget.myToken
+          ? IconButton(
+              onPressed: () {},
+              tooltip: "Evaluate chat",
+              icon: const Icon(Icons.psychology))
+          : const SizedBox.shrink();
+
+      print(thing);
+
+      setState(() {
+        _evaluateButton = evalTemp;
+      });
+
       setState(() {
         loading = false;
       });
@@ -279,6 +296,8 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
   }
 
   void _send(String v) async {
+    if (v.trim().isEmpty) return;
+
     bool hasProf = filter.hasProfanity(v);
     String value = filter.censor(v);
 
@@ -449,6 +468,7 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
                     );
                   });
             },
+            tooltip: "Edit Chat Name",
             icon: const Icon(Icons.edit)),
         IconButton(
             onPressed: () {
@@ -522,8 +542,8 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
                                       LineChartData(
                                         gridData: const FlGridData(show: true),
                                         titlesData: FlTitlesData(
-                                          leftTitles: AxisTitles(
-                                            axisNameWidget: const Tooltip(
+                                          leftTitles: const AxisTitles(
+                                            axisNameWidget: Tooltip(
                                               message:
                                                   'This tracks how many karma points you have gained or lost during this chat.',
                                               child: Text(
@@ -534,8 +554,8 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
                                                 ),
                                               ),
                                             ),
-                                            sideTitles: const SideTitles(
-                                                showTitles: false),
+                                            sideTitles:
+                                                SideTitles(showTitles: false),
                                           ),
                                           topTitles: const AxisTitles(
                                             sideTitles:
@@ -624,7 +644,8 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
               );
             },
             tooltip: "Show Karma Chart",
-            icon: const Icon(Icons.show_chart))
+            icon: const Icon(Icons.show_chart)),
+        _evaluateButton
       ])),
       Column(children: <Widget>[
         Container(
@@ -650,7 +671,9 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
             child: Padding(
               padding: const EdgeInsets.only(bottom: 60),
               child: loading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const Padding(
+                      padding: EdgeInsets.only(top: 15),
+                      child: Center(child: CircularProgressIndicator()))
                   : Column(
                       children: _messages,
                       // children: <Widget>[
@@ -890,6 +913,7 @@ class _ChatPageState extends State<ChatPage> {
   @override
   void initState() {
     super.initState();
+
     rebuildChats();
   }
 
