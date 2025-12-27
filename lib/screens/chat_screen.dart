@@ -10,12 +10,37 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:fl_chart/fl_chart.dart';
+import 'dart:math';
 // ignore: deprecated_member_use, avoid_web_libraries_in_flutter
 import 'dart:html' as html;
 
 int _ppage = 0;
 
 final ProfanityFilter filter = ProfanityFilter();
+
+typedef KarmaHistoryRecord = ({
+  String user,
+  List<FlSpot> history,
+  Color color,
+});
+
+final List<Color> colorPalette = [
+  Colors.blue,
+  Colors.red,
+  Colors.green,
+  Colors.orange,
+  Colors.purple,
+  Colors.teal,
+  Colors.pink,
+  Colors.amber,
+];
+
+Color getColorForUser(String user) {
+  final hash = user.hashCode;
+  final index = hash.abs() % colorPalette.length;
+  return colorPalette[index];
+}
 
 class ChatPage extends StatefulWidget {
   const ChatPage({super.key});
@@ -55,6 +80,7 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
   DatabaseReference? thisRef;
 
   String? _actualTitle;
+  bool _aiAnalysisEnabled = false;
 
   bool loading = true;
 
@@ -164,6 +190,10 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
                 sender.replaceAll('.', '_dot_').replaceAll('@', '_at_');
             pfp = await FirebaseUserTools.load(
                 'profilePictures/$emailKey/profilePicture');
+            print("Look! It's now ${_aiAnalysisEnabled}");
+            if (_aiAnalysisEnabled) {
+              _analyzeWithAI();
+            }
 
             Map uData = await FirebaseUserTools.load('/');
             karma = 0;
@@ -289,61 +319,12 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
     }
   }
 
-  Future<void> _analyzeWithAI(String message) async {
-    if (message.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a message to analyze')),
-      );
-      return;
-    }
-
-    // Show loading indicator
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(),
-      ),
-    );
-
+  Future<void> _analyzeWithAI() async {
     try {
-      final prompt =
-          'Analyze this message for empathy and emotional intelligence. Provide a brief, constructive response (max 100 words): "$message"';
-
-      final aiResponse = await OpenAIService.sendMessage(
-        message: prompt,
-        maxTokens: 150,
-      );
-
-      if (!mounted) return;
-      Navigator.pop(context); // Close loading dialog
-
-      // Show AI response in a dialog
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('AI Analysis'),
-          content: Text(aiResponse),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Close'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                // Optionally send AI response as a system message
-                _sendAIResponseAsMessage(aiResponse);
-              },
-              child: const Text('Share in Chat'),
-            ),
-          ],
-        ),
+      await OpenAIService.analyzeMessage(
+        chatId: widget.chatId,
       );
     } catch (e) {
-      if (!mounted) return;
-      Navigator.pop(context); // Close loading dialog
-
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error: ${e.toString()}'),
@@ -351,15 +332,6 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
         ),
       );
     }
-  }
-
-  Future<void> _sendAIResponseAsMessage(String aiResponse) async {
-    Map data = await FirebaseChatTools.load('/');
-    String name = data.keys.elementAt(widget.chatId);
-    await FirebaseChatTools.listPush('$name/data', {
-      "sender": "system",
-      "text": "AI Analysis: $aiResponse",
-    });
   }
 
   void _renameChat(String newName) async {
@@ -376,149 +348,384 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
     });
   }
 
+  Future<List<KarmaHistoryRecord>> _formatKarmaHistory() async {
+    Map data = await FirebaseChatTools.load('/');
+    String chatKey = data.keys.elementAt(widget.chatId).toString();
+
+    if (!await FirebaseChatTools.exists('$chatKey/karmaHistory')) {
+      return [];
+    }
+
+    dynamic karmaHistoryRaw =
+        await FirebaseChatTools.load('$chatKey/karmaHistory');
+
+    // Convert from Map<Object?, Object?> to Map<String, Map<int, int>>
+    Map<String, Map<int, int>> karmaHistory = {};
+    if (karmaHistoryRaw is Map) {
+      karmaHistoryRaw.forEach((key, value) {
+        String userKey = key.toString();
+        Map<int, int> userHistory = {};
+        if (value is Map) {
+          value.forEach((k, v) {
+            int messageCount = k is int ? k : int.tryParse(k.toString()) ?? 0;
+            int karmaValue = v is int ? v : int.tryParse(v.toString()) ?? 0;
+            userHistory[messageCount] = karmaValue;
+          });
+        }
+        karmaHistory[userKey] = userHistory;
+      });
+    }
+    List<KarmaHistoryRecord> formattedHistory = [];
+    int lastMessageTime = karmaHistory.values
+        .expand((userHistory) => userHistory.keys)
+        .reduce(max);
+
+    for (MapEntry<String, Map<int, int>> entry in karmaHistory.entries) {
+      String user = entry.key;
+
+      List<FlSpot> spots = [];
+      int lastMessageValue = 0;
+      for (int i = entry.value.keys.first; i <= lastMessageTime; i += 5) {
+        if (entry.value.containsKey(i)) {
+          int karmaValue = entry.value[i]!;
+          spots.add(FlSpot(i.toDouble(),
+              lastMessageValue.toDouble() + karmaValue.toDouble()));
+          lastMessageValue += karmaValue;
+        } else {
+          spots.add(FlSpot(i.toDouble(), lastMessageValue.toDouble()));
+        }
+      }
+
+      var record = (user: user, history: spots, color: getColorForUser(user));
+      formattedHistory.add(record);
+    }
+    return formattedHistory;
+  }
+
   @override
   Widget build(BuildContext context) {
-    return appInstance(Column(children: [
+    return appInstance(Column(children: <Widget>[
       AppBar(
-        title: Row(children: <Widget>[
-          Center(child: Text(_actualTitle ?? widget.title)),
-          const SizedBox(width: 40),
-          IconButton(
-              onPressed: () {
-                showDialog(
-                    context: context,
-                    builder: (BuildContext context) {
-                      return AlertDialog(
-                        backgroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+          title: Row(children: <Widget>[
+        Center(child: Text(_actualTitle ?? widget.title)),
+        const SizedBox(width: 40),
+        IconButton(
+            onPressed: () {
+              showDialog(
+                  context: context,
+                  builder: (BuildContext context) {
+                    return AlertDialog(
+                      backgroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      title: const Text("Edit Chat Name"),
+                      content: TextField(
+                        decoration: const InputDecoration(
+                          hintText: "Enter new chat name...",
                         ),
-                        title: const Text("Edit Chat Name"),
-                        content: TextField(
-                          decoration: const InputDecoration(
-                            hintText: "Enter new chat name...",
-                          ),
-                          onSubmitted: (String value) async {
-                            _renameChat(value);
+                        onSubmitted: (String value) async {
+                          _renameChat(value);
+                          Navigator.of(context).pop();
+                        },
+                        controller: _chatNameController,
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () {
                             Navigator.of(context).pop();
                           },
-                          controller: _chatNameController,
+                          child: const Text("Cancel"),
                         ),
-                        actions: [
-                          TextButton(
-                            onPressed: () {
-                              Navigator.of(context).pop();
-                            },
-                            child: const Text("Cancel"),
-                          ),
-                          TextButton(
-                            onPressed: () async {
-                              _renameChat(_chatNameController.text);
-                              setState(() {});
-                              Navigator.of(context).pop();
-                            },
-                            child: const Text("Okay"),
-                          ),
-                        ],
-                      );
-                    });
-              },
-              icon: const Icon(Icons.edit))
-        ]),
-      ),
-      Column(
-        children: <Widget>[
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border(
-                top: BorderSide(
-                  color: Colors.blueGrey.shade100,
-                  width: 1,
-                  style: BorderStyle.solid,
-                ),
-              ),
-            ),
-            width: MediaQuery.sizeOf(context).width,
-            height: MediaQuery.sizeOf(context).height -
-                56 -
-                56 -
-                6 -
-                kBottomNavigationBarHeight,
-            child: SafeArea(
-                child: SingleChildScrollView(
-              controller: _scrollController,
-              child: Padding(
-                padding: const EdgeInsets.only(bottom: 60),
-                child: loading
-                    ? const Center(child: CircularProgressIndicator())
-                    : Column(
-                        children: _messages,
-                        // children: <Widget>[
-                        //   StreamBuilder<DatabaseEvent>(stream: thisRef?.onValue, builder: (context, snapshot) {
-                        //     if (snapshot.hasError) return const Message("An error occured.", Sender.other);
-                        //     if (snapshot.connectionState == ConnectionState.waiting) return const CircularProgressIndicator();
-
-                        //     final dynamic data = snapshot.data!.snapshot.value;
-                        //     return Message("$data", Sender.other);
-                        //   }),
-                        // ],
+                        TextButton(
+                          onPressed: () async {
+                            _renameChat(_chatNameController.text);
+                            setState(() {});
+                            Navigator.of(context).pop();
+                          },
+                          child: const Text("Okay"),
+                        ),
+                      ],
+                    );
+                  });
+            },
+            icon: const Icon(Icons.edit)),
+        IconButton(
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (BuildContext context) {
+                  return AlertDialog(
+                      backgroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
-              ),
-            )),
-          ),
-          Align(
-            alignment: Alignment.bottomLeft,
-            child: Container(
-              color: Colors.lightBlue.shade100,
-              height: 60,
-              alignment: Alignment.centerLeft,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.start,
-                children: <Widget>[
-                  Container(
-                    padding: const EdgeInsets.only(left: 10, right: 5),
-                    width: MediaQuery.sizeOf(context).width - 130,
-                    child: TextField(
-                      onSubmitted: (String value) {
-                        _send(value);
-                      },
-                      controller: _textController,
-                      focusNode: _textFocus,
-                      autofocus: false,
-                      decoration:
-                          const InputDecoration(hintText: "Say something..."),
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.only(right: 5, top: 5, bottom: 5),
-                    width: 50,
-                    child: IconButton(
-                      onPressed: () {
-                        _analyzeWithAI(_textController.value.text);
-                      },
-                      tooltip: "Analyze with AI",
-                      icon: const Icon(Icons.psychology, size: 24),
-                      color: const Color(0xFF667eea),
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.only(right: 5, top: 5, bottom: 5),
-                    width: 60,
-                    child: FloatingActionButton(
-                      onPressed: () {
-                        _send(_textController.value.text);
-                      },
-                      tooltip: "Send",
-                      child: const Icon(Icons.send),
-                    ),
-                  ),
-                ],
+                      title: const Text("Karma History Chart"),
+                      content: SizedBox(
+                          height: 350,
+                          width: 300,
+                          child: FutureBuilder<List<KarmaHistoryRecord>>(
+                            future: _formatKarmaHistory(),
+                            builder: (context, snapshot) {
+                              if (snapshot.connectionState ==
+                                  ConnectionState.waiting) {
+                                return const Center(
+                                    child: CircularProgressIndicator());
+                              }
+
+                              if (snapshot.hasError ||
+                                  !snapshot.hasData ||
+                                  snapshot.data!.isEmpty) {
+                                return const Center(
+                                    child: Text('No karma history available'));
+                              }
+
+                              final karmaHistory = snapshot.data!;
+
+                              return Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  // Legend
+                                  Wrap(
+                                    spacing: 12,
+                                    runSpacing: 8,
+                                    alignment: WrapAlignment.center,
+                                    children: karmaHistory.map((record) {
+                                      return Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Container(
+                                            width: 16,
+                                            height: 16,
+                                            decoration: BoxDecoration(
+                                              color: record.color,
+                                              shape: BoxShape.circle,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            record.user
+                                                .replaceAll('_at_', '@')
+                                                .replaceAll('_dot_', '.'),
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ],
+                                      );
+                                    }).toList(),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  // Chart
+                                  Expanded(
+                                    child: LineChart(
+                                      LineChartData(
+                                        gridData: const FlGridData(show: true),
+                                        titlesData: FlTitlesData(
+                                          leftTitles: AxisTitles(
+                                            axisNameWidget: const Tooltip(
+                                              message:
+                                                  'This tracks how many karma points you have gained or lost during this chat.',
+                                              child: Text(
+                                                'Karma Points',
+                                                style: TextStyle(
+                                                  color: Color(0xff37434d),
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ),
+                                            sideTitles: const SideTitles(
+                                                showTitles: false),
+                                          ),
+                                          topTitles: const AxisTitles(
+                                            sideTitles:
+                                                SideTitles(showTitles: false),
+                                          ),
+                                          rightTitles: AxisTitles(
+                                            sideTitles: SideTitles(
+                                              showTitles: true,
+                                              reservedSize: 40,
+                                              getTitlesWidget: (value, meta) {
+                                                return Text(
+                                                  value.toInt().toString(),
+                                                  style: const TextStyle(
+                                                    color: Color(0xff37434d),
+                                                    fontSize: 10,
+                                                  ),
+                                                );
+                                              },
+                                            ),
+                                          ),
+                                          bottomTitles: AxisTitles(
+                                            axisNameWidget: const Tooltip(
+                                              message:
+                                                  'Point deductions or additions are made every 5 messages. The x-axis shows how your kindness points have changed over time.',
+                                              child: Text(
+                                                'Time',
+                                                style: TextStyle(
+                                                  color: Color(0xff37434d),
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ),
+                                            sideTitles: SideTitles(
+                                              showTitles: true,
+                                              reservedSize: 30,
+                                              getTitlesWidget: (value, meta) {
+                                                // Only show labels for values divisible by 5
+                                                if (value % 5 == 0) {
+                                                  return Text(
+                                                    value.toInt().toString(),
+                                                    style: const TextStyle(
+                                                      color: Color(0xff37434d),
+                                                      fontSize: 10,
+                                                    ),
+                                                  );
+                                                }
+                                                return const Text('');
+                                              },
+                                            ),
+                                          ),
+                                        ),
+                                        borderData: FlBorderData(
+                                          show: true,
+                                          border: Border.all(
+                                              color: const Color(0xff37434d)),
+                                        ),
+                                        lineBarsData:
+                                            karmaHistory.map((record) {
+                                          return LineChartBarData(
+                                            spots: record.history,
+                                            isCurved: true,
+                                            color: record.color,
+                                            barWidth: 3,
+                                            dotData:
+                                                const FlDotData(show: true),
+                                            belowBarData:
+                                                BarAreaData(show: false),
+                                          );
+                                        }).toList(),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
+                          )),
+                      actions: [
+                        TextButton(
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                          },
+                          child: const Text("Close"),
+                        )
+                      ]);
+                },
+              );
+            },
+            tooltip: "Show Karma Chart",
+            icon: const Icon(Icons.show_chart))
+      ])),
+      Column(children: <Widget>[
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border(
+              top: BorderSide(
+                color: Colors.blueGrey.shade100,
+                width: 1,
+                style: BorderStyle.solid,
               ),
             ),
           ),
-        ],
-      )
+          width: MediaQuery.sizeOf(context).width,
+          height: MediaQuery.sizeOf(context).height -
+              56 -
+              56 -
+              6 -
+              kBottomNavigationBarHeight,
+          child: SafeArea(
+              child: SingleChildScrollView(
+            controller: _scrollController,
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 60),
+              child: loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : Column(
+                      children: _messages,
+                      // children: <Widget>[
+                      //   StreamBuilder<DatabaseEvent>(stream: thisRef?.onValue, builder: (context, snapshot) {
+                      //     if (snapshot.hasError) return const Message("An error occured.", Sender.other);
+                      //     if (snapshot.connectionState == ConnectionState.waiting) return const CircularProgressIndicator();
+
+                      //     final dynamic data = snapshot.data!.snapshot.value;
+                      //     return Message("$data", Sender.other);
+                      //   }),
+                      // ],
+                    ),
+            ),
+          )),
+        ),
+        Align(
+          alignment: Alignment.bottomLeft,
+          child: Container(
+            color: Colors.lightBlue.shade100,
+            height: 60,
+            alignment: Alignment.centerLeft,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: <Widget>[
+                Container(
+                  padding: const EdgeInsets.only(left: 10, right: 5),
+                  width: MediaQuery.sizeOf(context).width - 130,
+                  child: TextField(
+                    onSubmitted: (String value) {
+                      _send(value);
+                    },
+                    controller: _textController,
+                    focusNode: _textFocus,
+                    autofocus: false,
+                    decoration:
+                        const InputDecoration(hintText: "Say something..."),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.only(right: 5, top: 5, bottom: 5),
+                  width: 50,
+                  child: IconButton(
+                    onPressed: () {
+                      setState(() {
+                        _aiAnalysisEnabled = !_aiAnalysisEnabled;
+                        print("Look! It's now ${_aiAnalysisEnabled}");
+                      });
+                    },
+                    tooltip: _aiAnalysisEnabled
+                        ? "Disable AI Analysis (Your End Only)"
+                        : "Enable AI Analysis (Your End Only)",
+                    icon: _aiAnalysisEnabled
+                        ? const Icon(Icons.psychology, size: 24)
+                        : const Icon(Icons.cancel, size: 20, color: Colors.red),
+                    color: _aiAnalysisEnabled
+                        ? const Color(0xFF667eea)
+                        : Colors.grey,
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.only(right: 5, top: 5, bottom: 5),
+                  width: 60,
+                  child: FloatingActionButton(
+                    onPressed: () {
+                      _send(_textController.value.text);
+                    },
+                    tooltip: "Send",
+                    child: const Icon(Icons.send),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ])
     ]));
   }
 }

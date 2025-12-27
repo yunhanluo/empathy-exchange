@@ -8,6 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'screens/login_screen.dart';
 import 'screens/profile_screen.dart';
 import 'services/profile_service.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -25,6 +26,8 @@ void main() async {
       measurementId: "G-WB44LX8J7K",
     ),
   );
+
+  await dotenv.load(fileName: ".env");
 
   // FirebaseTools.initialize();
 

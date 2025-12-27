@@ -22,3 +22,5 @@ android/
 pubspec.lock
 *.py
 python/
+!python/*.py
+.env
