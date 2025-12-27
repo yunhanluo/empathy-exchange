@@ -258,8 +258,6 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
               icon: const Icon(Icons.psychology))
           : const SizedBox.shrink();
 
-      print(thing);
-
       setState(() {
         _evaluateButton = evalTemp;
       });
@@ -426,7 +424,10 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
     return appInstance(Column(children: <Widget>[
       AppBar(
           title: Row(children: <Widget>[
-        Center(child: Text(_actualTitle ?? widget.title)),
+        Center(
+            child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width - 220),
+                child: Text(_actualTitle ?? widget.title))),
         const SizedBox(width: 40),
         IconButton(
             onPressed: () {
@@ -719,7 +720,7 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
                     onPressed: () {
                       setState(() {
                         _aiAnalysisEnabled = !_aiAnalysisEnabled;
-                        print("Look! It's now ${_aiAnalysisEnabled}");
+                        // print("Look! It's now ${_aiAnalysisEnabled}");
                       });
                     },
                     tooltip: _aiAnalysisEnabled
@@ -855,11 +856,11 @@ class _ChatPageState extends State<ChatPage> {
                 children: pfps,
               ),
             ),
-            Text(
+            ConstrainedBox(constraints:BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width - 220),child:Text(
               title ?? "Chat ${_chats.length + 1}",
               style: const TextStyle(fontSize: 16),
               textAlign: TextAlign.left,
-            ),
+            )),
             const Icon(
               Icons.arrow_forward_ios, // Right arrow icon
               size: 16,
