@@ -21,4 +21,4 @@ android/
 *.swift
 pubspec.lock
 *.py
-!python/*.py
+python/
