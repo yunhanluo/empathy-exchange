@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'dart:math';
 
 class OpenAIService {
   // System prompts
@@ -16,6 +17,22 @@ class OpenAIService {
           You are given a summary of the conversation so far. Taking this into account, look at the given message and assign or take away kindness points to the user 
           who has sent that message. The points given or taken away will range from -10 to 10, with -10 being a very negative interaction and 10 being
           a very positive one. Your response must be a json string with reasoning, 
+          a string, and points, an integer. Your reasoning should be concise. Make sure that it's not too similar to the given summary.
+          If possible, include a message field with your advice, a comment, or something uplifting. It is fine if there is nothing to say.
+          This field must be called message. These should be the ONLY FIELDS INCLUDED. Or else I will be forced to create a JSON schema.'''
+    }
+  ];
+
+  static const List<Map<String, String>> systemPromptOwnerEvaluation = [
+    {
+      'role': 'system',
+      'content':
+          '''You are an AI assistant on a project called Empathy Exchange. 
+          Our mission is to guide people as they interact with each other. 
+          Your specific mission is to assign points unbiasedly to people as they interact. 
+          You're supposed to evaluate messages for everyone.  
+          You are given a summary of the conversation so far. You are going to be given the last 10 messages in the conversation. The points given or taken away will range from -10 to 10, with -10 being a very negative interaction and 10 being
+          a very positive one. Your response must be a a list of json strings with reasoning, 
           a string, and points, an integer. Your reasoning should be concise. Make sure that it's not too similar to the given summary.
           If possible, include a message field with your advice, a comment, or something uplifting. It is fine if there is nothing to say.
           This field must be called message. These should be the ONLY FIELDS INCLUDED. Or else I will be forced to create a JSON schema.'''
@@ -36,6 +53,7 @@ class OpenAIService {
 
   static Future<void> analyzeMessage({
     required int chatId,
+    required String type,
   }) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
@@ -100,6 +118,7 @@ class OpenAIService {
         print('Urk!!!!!!!! Not good!');
         print('Error: $e');
         karmaHistory = {};
+        print(chatLength);
         for (String user in userList) {
           karmaHistory[user.replaceAll('.', '_dot_').replaceAll('@', '_at_')] =
               {
@@ -117,8 +136,20 @@ class OpenAIService {
       if (chatLength > 0 && chatLength % 5 == 0) {
         print("Creating summary");
         print("Chat length: $chatLength");
-        List<MapEntry<String, dynamic>> recentEntries =
-            entries.length > 5 ? entries.sublist(entries.length - 5) : entries;
+        List<MapEntry<String, dynamic>> recentEntries;
+        if (type == 'message') {
+          recentEntries = entries.length > 5
+              ? entries.sublist(entries.length - 5)
+              : entries;
+        } else if (type == 'owner') {
+          recentEntries = entries.length > 10
+              ? entries.sublist(entries.length - 10)
+              : entries;
+        } else {
+          recentEntries = entries.length > 10
+              ? entries.sublist(entries.length - 10)
+              : entries;
+        }
 
         List<String> messagesList = [];
         bool userIncluded =
@@ -228,7 +259,7 @@ class OpenAIService {
         await FirebaseChatTools.listPush('$chatKey/data', {
           'sender': 'system',
           'text':
-              '''The AI has evaluated the messages for $displayName. \n $points points have been ${points >= 0 ? 'added' : 'deducted'} ${points >= 0 ? 'to' : 'from'} $displayName's total. \n \n The AI has given the following reasoning: "$reasoning \n \n ${message == '' ? '' : 'The AI would like to share the following message:'} $message''',
+              '''The AI has evaluated the messages for $displayName. \n ${points.abs()} ${points == 1 ? 'point has' : 'points have'} been ${points >= 0 ? 'added' : 'deducted'} ${points >= 0 ? 'to' : 'from'} $displayName's total. \n \n The AI has given the following reasoning: "$reasoning \n \n ${message == '' ? '' : 'The AI would like to share the following message:'} $message''',
         });
 
         dynamic oldPoints = await FirebaseUserTools.load('${user.uid}/karma');

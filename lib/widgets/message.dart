@@ -6,8 +6,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 class Message extends StatefulWidget {
-  const Message(
-      this.value, this.sender, this.senderToken, this.pfp64, this.karma, this.chatId,
+  const Message(this.value, this.sender, this.senderToken, this.pfp64,
+      this.karma, this.chatId,
       {super.key});
 
   final String value;
@@ -23,9 +23,19 @@ class Message extends StatefulWidget {
 }
 
 class _MessageState extends State<Message> {
-  _MessageState();
+  String? _censoredValue;
 
   TextEditingController reasonController = TextEditingController();
+  String? selectedIcon;
+  String? selectedReason;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _censoredValue =
+        FirebaseChatTools.filter.censor(_censoredValue ?? widget.value);
+  }
 
   @override
   void dispose() {
@@ -34,29 +44,151 @@ class _MessageState extends State<Message> {
     super.dispose();
   }
 
-  void _giveBadge(String reason) async {
+  Widget _buildIconOption(
+    BuildContext context,
+    StateSetter setDialogState,
+    IconData icon,
+    String name,
+    String reason,
+  ) {
+    bool isSelected = selectedIcon == name;
+    return GestureDetector(
+      onTap: () {
+        setDialogState(() {
+          selectedIcon = name;
+          selectedReason = reason;
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.blue.shade100 : Colors.grey.shade100,
+          border: Border.all(
+            color: isSelected ? Colors.blue : Colors.grey.shade300,
+            width: isSelected ? 2 : 1,
+          ),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 32, color: isSelected ? Colors.blue : Colors.grey),
+            const SizedBox(height: 4),
+            Text(
+              name,
+              style: TextStyle(
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                fontSize: 12,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              reason,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 10,
+                color: Colors.grey.shade600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _getDefaultReason(String iconName) {
+    switch (iconName) {
+      case 'Love':
+        return 'For being caring and compassionate';
+      case 'Support':
+        return 'For being supportive and encouraging';
+      case 'Excellence':
+        return 'For going above and beyond';
+      case 'Insight':
+        return 'For sharing great ideas and wisdom';
+      case 'Joy':
+        return 'For bringing happiness and positivity';
+      case 'Help':
+        return 'For being helpful and reliable';
+      default:
+        return 'For being kind';
+    }
+  }
+
+  void _giveBadge(String reason, String icon) async {
     String mytoken = await FirebaseUserTools.load(
         '${FirebaseAuth.instance.currentUser?.uid}/pairToken');
     String? uid = await FirebaseUserTools.getUidFromToken(widget.senderToken);
 
-    if (FirebaseAuth.instance.currentUser?.uid == uid) {
-      return;
-    }
-
     await FirebaseUserTools.listPush('$uid/badges', {
       'giver': mytoken,
       'reason': reason,
+      'icon': icon,
       'time': DateTime.now().toIso8601String(),
     });
     await FirebaseUserTools.set(
         '$uid/karma', await FirebaseUserTools.load('$uid/karma') + 1);
-    
+
     Map data = await FirebaseChatTools.load('/');
     String name = data.keys.elementAt(widget.chatId);
     await FirebaseChatTools.listPush('$name/data', {
       "sender": 'system',
-      "text": "${await FirebaseUserTools.load('${FirebaseAuth.instance.currentUser?.uid}/displayName')} gave ${await FirebaseUserTools.load('$uid/displayName')} a kindness badge! Reason: $reason",
+      "text":
+          "${await FirebaseUserTools.load('${FirebaseAuth.instance.currentUser?.uid}/displayName')} gave ${await FirebaseUserTools.load('$uid/displayName')} a kindness badge! Reason: $reason",
     });
+
+    dynamic messagesSnapshot = await FirebaseChatTools.load('$name/data');
+    List<MapEntry<String, dynamic>> entries = [];
+    if (messagesSnapshot is Map) {
+      entries = messagesSnapshot.entries.map((entry) {
+        return MapEntry<String, dynamic>(
+          entry.key.toString(),
+          entry.value,
+        );
+      }).toList();
+    }
+    entries = entries.where((entry) {
+      final message = entry.value as Map?;
+      final sender = message?['sender'] as String?;
+      return sender != 'system' && sender != 'ai';
+    }).toList();
+
+    int chatLength = entries.length;
+
+    dynamic karmaHistoryRaw =
+        await FirebaseChatTools.load('$name/karmaHistory');
+
+    // Convert from Map<Object?, Object?> to Map<String, Map<int, int>>
+    Map<String, Map<int, int>> karmaHistory = {};
+    if (karmaHistoryRaw is Map) {
+      karmaHistoryRaw.forEach((key, value) {
+        String userKey = key.toString();
+        Map<int, int> userHistory = {};
+        if (value is Map) {
+          value.forEach((k, v) {
+            int messageCount = k is int ? k : int.tryParse(k.toString()) ?? 0;
+            int karmaValue = v is int ? v : int.tryParse(v.toString()) ?? 0;
+            userHistory[messageCount] = karmaValue;
+          });
+        }
+        karmaHistory[userKey] = userHistory;
+      });
+    }
+    String userEmail = await FirebaseUserTools.load('$uid/email');
+    String formattedEmail =
+        userEmail.replaceAll('.', '_dot_').replaceAll('@', '_at_');
+    print('ChatLength: $chatLength');
+
+    // Create the user's history map if it doesn't exist
+    if (karmaHistory[formattedEmail] == null) {
+      karmaHistory[formattedEmail] = {};
+    }
+
+    karmaHistory[formattedEmail]![chatLength] =
+        (karmaHistory[formattedEmail]![chatLength] ?? 0) + 1;
+
+    print(karmaHistory);
+    await FirebaseChatTools.set('$name/karmaHistory', karmaHistory);
   }
 
   @override
@@ -79,7 +211,7 @@ class _MessageState extends State<Message> {
                   maxWidth: 400,
                 ),
                 child: Text(
-                  widget.value,
+                  _censoredValue ?? widget.value,
                   style: const TextStyle(fontSize: 16),
                 ))));
 
@@ -92,42 +224,117 @@ class _MessageState extends State<Message> {
             height: 25,
             fit: BoxFit.cover),
         onPressed: () {
+          selectedIcon = null;
+          selectedReason = null;
+          reasonController.clear();
           showDialog(
               context: context,
               builder: (context) {
-                return AlertDialog(
-                  backgroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  title: const Text("Give Kindness Badge"),
-                  content: TextField(
-                    decoration: const InputDecoration(
-                      hintText: "Enter a reason why...",
-                    ),
-                    onSubmitted: (String value) async {
-                      _giveBadge(value);
-                      setState(() {});
-                      Navigator.of(context).pop();
-                    },
-                    controller: reasonController,
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                      },
-                      child: const Text("Cancel"),
-                    ),
-                    TextButton(
-                      onPressed: () async {
-                        _giveBadge(reasonController.text);
-                        setState(() {});
-                        Navigator.of(context).pop();
-                      },
-                      child: const Text("Okay"),
-                    ),
-                  ],
+                return StatefulBuilder(
+                  builder: (context, setDialogState) {
+                    return AlertDialog(
+                      backgroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      title: const Text("Give Kindness Badge"),
+                      content: SingleChildScrollView(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Icon selection
+                            const Text(
+                              "Choose an icon:",
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 12,
+                              runSpacing: 12,
+                              alignment: WrapAlignment.center,
+                              children: [
+                                _buildIconOption(
+                                  context,
+                                  setDialogState,
+                                  Icons.favorite,
+                                  'Love',
+                                  'For being caring and compassionate',
+                                ),
+                                _buildIconOption(
+                                  context,
+                                  setDialogState,
+                                  Icons.thumb_up,
+                                  'Support',
+                                  'For being supportive and encouraging',
+                                ),
+                                _buildIconOption(
+                                  context,
+                                  setDialogState,
+                                  Icons.star,
+                                  'Excellence',
+                                  'For going above and beyond',
+                                ),
+                                _buildIconOption(
+                                  context,
+                                  setDialogState,
+                                  Icons.lightbulb,
+                                  'Insight',
+                                  'For sharing great ideas and wisdom',
+                                ),
+                                _buildIconOption(
+                                  context,
+                                  setDialogState,
+                                  Icons.celebration,
+                                  'Joy',
+                                  'For bringing happiness and positivity',
+                                ),
+                                _buildIconOption(
+                                  context,
+                                  setDialogState,
+                                  Icons.handshake,
+                                  'Help',
+                                  'For being helpful and reliable',
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            // Custom reason field
+                            TextField(
+                              decoration: const InputDecoration(
+                                hintText: "Enter a reason...",
+                              ),
+                              controller: reasonController,
+                              onChanged: (value) {
+                                setDialogState(() {
+                                  selectedReason = value;
+                                });
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                          },
+                          child: const Text("Cancel"),
+                        ),
+                        TextButton(
+                          onPressed: () async {
+                            if (selectedIcon != null) {
+                              String reason = selectedReason ??
+                                  _getDefaultReason(selectedIcon!);
+                              _giveBadge(reason, selectedIcon!);
+                              setState(() {});
+                              Navigator.of(context).pop();
+                            }
+                          },
+                          child: const Text("Give Badge"),
+                        ),
+                      ],
+                    );
+                  },
                 );
               });
         },
@@ -164,7 +371,11 @@ class _MessageState extends State<Message> {
                 children: widget.sender == Sender.self
                     ? <Widget>[paddedMessage, padding, pfpSec]
                     : (widget.sender == Sender.system
-                        ? <Widget>[padding, Center(child: paddedMessage), padding]
+                        ? <Widget>[
+                            padding,
+                            Center(child: paddedMessage),
+                            padding
+                          ]
                         : <Widget>[pfpSec, padding, paddedMessage]))));
   }
 }

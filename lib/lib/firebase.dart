@@ -1,6 +1,7 @@
 import 'dart:js_interop';
 
 import 'package:firebase_database/firebase_database.dart';
+import 'package:profanity_filter/profanity_filter.dart';
 
 class FirebaseUserTools {
   static final DatabaseReference ref = FirebaseDatabase.instance.ref('users');
@@ -59,6 +60,8 @@ class FirebaseUserTools {
 
 class FirebaseChatTools {
   static final DatabaseReference ref = FirebaseDatabase.instance.ref('chats');
+
+  static final ProfanityFilter filter = ProfanityFilter();
 
   static Future<void> save(String path, Map<String, dynamic> dict) async {
     final DatabaseReference ref2 = ref.child(path);
