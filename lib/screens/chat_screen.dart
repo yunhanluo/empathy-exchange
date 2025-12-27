@@ -56,6 +56,8 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
 
   String? _actualTitle;
 
+  bool loading = true;
+
   @override
   void dispose() {
     _textController.dispose();
@@ -214,7 +216,15 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
           });
         });
       });
+
+      setState(() {
+        loading = false;
+      });
+
+      setState(() {});
     }();
+
+    setState(() {});
   }
 
   Future<void> _showNotification(String messageText) async {
@@ -360,7 +370,7 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
 
     await FirebaseChatTools.set(
         '/$chatKey/title', filter.censor(newName.trim()));
-    
+
     setState(() {
       _actualTitle = filter.censor(newName.trim());
     });
@@ -370,9 +380,8 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
   Widget build(BuildContext context) {
     return appInstance(Column(children: [
       AppBar(
-        title: Center(
-            child: Row(children: <Widget>[
-          Text(_actualTitle ?? widget.title),
+        title: Row(children: <Widget>[
+          Center(child: Text(_actualTitle ?? widget.title)),
           const SizedBox(width: 40),
           IconButton(
               onPressed: () {
@@ -415,7 +424,7 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
                     });
               },
               icon: const Icon(Icons.edit))
-        ])),
+        ]),
       ),
       Column(
         children: <Widget>[
@@ -441,18 +450,20 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
               controller: _scrollController,
               child: Padding(
                 padding: const EdgeInsets.only(bottom: 60),
-                child: Column(
-                  children: _messages,
-                  // children: <Widget>[
-                  //   StreamBuilder<DatabaseEvent>(stream: thisRef?.onValue, builder: (context, snapshot) {
-                  //     if (snapshot.hasError) return const Message("An error occured.", Sender.other);
-                  //     if (snapshot.connectionState == ConnectionState.waiting) return const CircularProgressIndicator();
+                child: loading
+                    ? const Center(child: CircularProgressIndicator())
+                    : Column(
+                        children: _messages,
+                        // children: <Widget>[
+                        //   StreamBuilder<DatabaseEvent>(stream: thisRef?.onValue, builder: (context, snapshot) {
+                        //     if (snapshot.hasError) return const Message("An error occured.", Sender.other);
+                        //     if (snapshot.connectionState == ConnectionState.waiting) return const CircularProgressIndicator();
 
-                  //     final dynamic data = snapshot.data!.snapshot.value;
-                  //     return Message("$data", Sender.other);
-                  //   }),
-                  // ],
-                ),
+                        //     final dynamic data = snapshot.data!.snapshot.value;
+                        //     return Message("$data", Sender.other);
+                        //   }),
+                        // ],
+                      ),
               ),
             )),
           ),
