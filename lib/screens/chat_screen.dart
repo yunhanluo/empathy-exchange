@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:js_interop';
-import 'package:profanity_filter/profanity_filter.dart';
 import 'package:empathy_exchange/widgets/material.dart';
 import 'package:empathy_exchange/widgets/message.dart';
 import 'package:empathy_exchange/lib/firebase.dart';
@@ -16,8 +15,6 @@ import 'dart:math';
 import 'dart:html' as html;
 
 int _ppage = 0;
-
-final ProfanityFilter filter = ProfanityFilter();
 
 typedef KarmaHistoryRecord = ({
   String user,
@@ -224,7 +221,7 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
                 'profilePictures/$emailKey/profilePicture');
             print("Look! It's now ${_aiAnalysisEnabled}");
             if (_aiAnalysisEnabled) {
-              _analyzeWithAI();
+              _analyzeWithAI(type: 'owner');
             }
 
             Map uData = await FirebaseUserTools.load('/');
@@ -283,7 +280,9 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
           .elementAt(widget.chatId) as Map);
       final Widget evalTemp = thing['owner'] == widget.myToken
           ? IconButton(
-              onPressed: () {},
+              onPressed: () {
+                _analyzeWithAI();
+              },
               tooltip: "Evaluate chat",
               icon: const Icon(Icons.psychology))
           : const SizedBox.shrink();
@@ -326,8 +325,7 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
   void _send(String v) async {
     if (v.trim().isEmpty) return;
 
-    bool hasProf = filter.hasProfanity(v);
-    String value = filter.censor(v);
+    bool hasProf = FirebaseChatTools.filter.hasProfanity(v);
 
     // final emailKey = myToken.replaceAll('.', '_dot_').replaceAll('@', '_at_');
     // String pfp = await FirebaseUserTools.load(
@@ -348,7 +346,7 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
     String name = data.keys.elementAt(widget.chatId);
     await FirebaseChatTools.listPush('$name/data', {
       "sender": widget.myToken,
-      "text": value,
+      "text": v,
     });
 
     if (hasProf) {
@@ -357,11 +355,12 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
       if (thing is int) {
         await FirebaseUserTools.set(
             '${FirebaseAuth.instance.currentUser?.uid}/karma',
-            thing - filter.getAllProfanity(v).length);
+            thing - FirebaseChatTools.filter.getAllProfanity(v).length);
       } else if (thing is String) {
         await FirebaseUserTools.set(
             '${FirebaseAuth.instance.currentUser?.uid}/karma',
-            int.parse(thing) - filter.getAllProfanity(v).length);
+            int.parse(thing) -
+                FirebaseChatTools.filter.getAllProfanity(v).length);
       }
     }
 
@@ -396,10 +395,11 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
     }
   }
 
-  Future<void> _analyzeWithAI() async {
+  Future<void> _analyzeWithAI({String type = 'message'}) async {
     try {
       await OpenAIService.analyzeMessage(
         chatId: widget.chatId,
+        type: type,
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -418,10 +418,10 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
     String chatKey = data.keys.elementAt(widget.chatId);
 
     await FirebaseChatTools.set(
-        '/$chatKey/title', filter.censor(newName.trim()));
+        '/$chatKey/title', FirebaseChatTools.filter.censor(newName.trim()));
 
     setState(() {
-      _actualTitle = filter.censor(newName.trim());
+      _actualTitle = FirebaseChatTools.filter.censor(newName.trim());
     });
   }
 
@@ -443,6 +443,8 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
         String userKey = key.toString();
         Map<int, int> userHistory = {};
         if (value is Map) {
+          if (!value.containsKey(0)) userHistory[0] = 0;
+
           value.forEach((k, v) {
             int messageCount = k is int ? k : int.tryParse(k.toString()) ?? 0;
             int karmaValue = v is int ? v : int.tryParse(v.toString()) ?? 0;
@@ -708,7 +710,7 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
             tooltip: "Show Karma Chart",
             icon: const Icon(Icons.show_chart)),
         _evaluateButton
-      ])),
+    ])),
       Column(children: <Widget>[
         Container(
           decoration: BoxDecoration(
