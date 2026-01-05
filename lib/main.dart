@@ -122,7 +122,12 @@ class _HomePageState extends State<HomePage> {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (await FirebaseUserTools.load(
+      _checkNegativeKarma();
+    });
+  }
+
+  void _checkNegativeKarma() async {
+    if (await FirebaseUserTools.load(
               '${FirebaseAuth.instance.currentUser?.uid}/karma') <=
           -100) {
         if (mounted) {
@@ -143,13 +148,21 @@ class _HomePageState extends State<HomePage> {
                           await FirebaseAuth.instance.signOut();
                           if (mounted) Navigator.pop(context);
                         },
-                        child: const Text("Log out"))
+                        child: const Text("Log out")),
+                    TextButton(
+                        onPressed: () async {
+                          setState(() {
+                            _checkNegativeKarma();
+                          });
+                          
+                          if (mounted) Navigator.pop(context);
+                        },
+                        child: const Text("Retry")),
                   ],
                 );
               });
         }
       }
-    });
   }
 
   @override
