@@ -221,7 +221,7 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
                 'profilePictures/$emailKey/profilePicture');
             print("Look! It's now ${_aiAnalysisEnabled}");
             if (_aiAnalysisEnabled) {
-              _analyzeWithAI(type: 'owner');
+              _analyzeWithAI();
             }
 
             Map uData = await FirebaseUserTools.load('/');
@@ -281,7 +281,7 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
       final Widget evalTemp = thing['owner'] == widget.myToken
           ? IconButton(
               onPressed: () {
-                _analyzeWithAI();
+                _analyzeWithAI(type: 'owner');
               },
               tooltip: "Evaluate chat",
               icon: const Icon(Icons.psychology))

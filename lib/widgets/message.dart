@@ -125,6 +125,7 @@ class _MessageState extends State<Message> {
       'reason': reason,
       'icon': icon,
       'time': DateTime.now().toIso8601String(),
+      'status': 'pending',
     });
     await FirebaseUserTools.set(
         '$uid/karma', await FirebaseUserTools.load('$uid/karma') + 1);
@@ -323,6 +324,7 @@ class _MessageState extends State<Message> {
                         TextButton(
                           onPressed: () async {
                             if (selectedIcon != null) {
+                              print("Selected icon: $selectedIcon");
                               String reason = selectedReason ??
                                   _getDefaultReason(selectedIcon!);
                               _giveBadge(reason, selectedIcon!);
