@@ -48,8 +48,21 @@ class FirebaseUserTools {
   static Future<String?> getUidFromToken(String token) async {
     Map users = await load('/');
     for (String uid in users.keys) {
-      String testToken =
-          await load('$uid/pairToken') ? await load('$uid/email') : null;
+      String? testToken;
+      
+      // Try to load pairToken first
+      try {
+        testToken = await load('$uid/pairToken') as String?;
+      } catch (e) {
+        // If pairToken doesn't exist, try email
+        try {
+          testToken = await load('$uid/email') as String?;
+        } catch (e2) {
+          // Neither exists, skip this user
+          continue;
+        }
+      }
+      
       if (testToken == token) {
         return uid;
       }

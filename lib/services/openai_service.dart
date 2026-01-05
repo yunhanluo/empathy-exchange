@@ -3,7 +3,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'dart:math';
 
 class OpenAIService {
   // System prompts
@@ -35,7 +34,8 @@ class OpenAIService {
           a very positive one. Return a JSON object with an evaluations array containg a list of evaluations. Each evaluation should be JSON objects with the user's email and the points you assign them. 
           Outside of the evaluations array, include a reasoning field for your reasoning, that is, the rationale behind the way you have assigned points to users. If possible, include a message field with your advice, 
           a comment, or something uplifting. It is fine if there is nothing to say.
-          This field must be called message. Do not include any other fields.'''
+          This field must be called message. Do not include any other fields.
+          Check to see that you have evaluations for AL users in the sample of the conversation.'''
     }
   ];
 
@@ -231,15 +231,37 @@ class OpenAIService {
         String message = jsonResponse['message'] ?? '';
 
         if (type == 'owner') {
-          List<Map<String, int>> evaluations =
-              jsonResponse['evaluations'] ?? '';
+          // Convert evaluations from dynamic to properly typed List<Map<String, int>>
+          List<Map<String, int>> evaluations = [];
+          dynamic evaluationsRaw = jsonResponse['evaluations'];
+          if (evaluationsRaw is List) {
+            for (var evalItem in evaluationsRaw) {
+              if (evalItem is Map) {
+                Map<String, int> evaluation = {};
+                evalItem.forEach((key, value) {
+                  String emailKey = key.toString();
+                  int points = value is int
+                      ? value
+                      : (value is String
+                          ? int.tryParse(value) ?? 0
+                          : (value is double
+                              ? value.toInt()
+                              : int.tryParse(value.toString()) ?? 0));
+                  evaluation[emailKey] = points;
+                });
+                evaluations.add(evaluation);
+              }
+            }
+          }
+
           String finalMessage = '';
           for (Map<String, int> evaluation in evaluations) {
-            for (MapEntry<String, dynamic> entry in evaluation.entries) {
+            for (MapEntry<String, int> entry in evaluation.entries) {
               String email = entry.key;
-              String? uid = await FirebaseUserTools.getUidFromToken(email);
+              String? uid = await FirebaseUserTools.getUidFromToken(
+                  email); //Doesn't really work, apparently!
               String displayName =
-                  await FirebaseUserTools.load('$uid/displayName');
+                  await FirebaseUserTools.load('$uid/displayName') ?? email;
               int points = entry.value;
               String formattedEmail =
                   email.replaceAll('.', '_dot_').replaceAll('@', '_at_');

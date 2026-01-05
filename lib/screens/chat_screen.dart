@@ -710,7 +710,7 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
             tooltip: "Show Karma Chart",
             icon: const Icon(Icons.show_chart)),
         _evaluateButton
-    ])),
+      ])),
       Column(children: <Widget>[
         Container(
           decoration: BoxDecoration(
@@ -947,40 +947,66 @@ class _ChatPageState extends State<ChatPage> {
       _loading = true;
     });
 
-    _chats.clear();
-    _chatPages.clear();
+    try {
+      _chats.clear();
+      _chatPages.clear();
 
-    JSAny chatArray = await FirebaseChatTools.load('/');
+      // Check if chats path exists before loading
+      bool chatsExist = await FirebaseChatTools.exists('/');
+      if (!chatsExist) {
+        if (mounted) {
+          setState(() {
+            _loading = false;
+          });
+        }
+        return;
+      }
 
-    if (!mounted) return;
+      JSAny chatArray = await FirebaseChatTools.load('/');
 
-    String myToken = await FirebaseUserTools.load(
-        '${FirebaseAuth.instance.currentUser!.uid}/pairToken');
-    List chats = FirebaseTools.asList(chatArray.dartify());
-    for (int i = 0; i < chats.length; i++) {
-      JSAny? chat = chats[i];
-      Map data = chat.dartify() as Map;
+      if (!mounted) return;
 
-      if ((data['tokens'] as Iterable).contains(myToken)) {
-        _addChatTalkPage(
-            myToken,
-            FirebaseTools.asList(data['tokens'])
-                .where((token) => token != myToken)
-                .toList(),
-            data['title'],
-            i);
+      String myToken = await FirebaseUserTools.load(
+          '${FirebaseAuth.instance.currentUser!.uid}/pairToken');
+
+      List chats = FirebaseTools.asList(chatArray.dartify());
+
+      for (int i = 0; i < chats.length; i++) {
+        JSAny? chat = chats[i];
+        Map data = chat.dartify() as Map;
+
+        if ((data['tokens'] as Iterable).contains(myToken)) {
+          _addChatTalkPage(
+              myToken,
+              FirebaseTools.asList(data['tokens'])
+                  .where((token) => token != myToken)
+                  .toList(),
+              data['title'],
+              i);
+        }
+      }
+    } catch (e) {
+      // Only show error if it's not a "path not found" error (which means no chats)
+      if (mounted && !e.toString().contains('Firebase path not found')) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading chats: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+        });
       }
     }
-
-    setState(() {
-      _loading = false;
-    });
   }
 
   @override
   void initState() {
     super.initState();
-
     rebuildChats();
   }
 
@@ -1003,11 +1029,21 @@ class _ChatPageState extends State<ChatPage> {
               kBottomNavigationBarHeight,
           child: _loading
               ? const Center(child: CircularProgressIndicator())
-              : ListView.builder(
-                  itemCount: _chats.length,
-                  itemBuilder: (BuildContext context2, int index) {
-                    return _chats[index];
-                  }),
+              : _chats.isEmpty
+                  ? const Center(
+                      child: Text(
+                        'No chats yet. Create a new chat to get started!',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    )
+                  : ListView.builder(
+                      itemCount: _chats.length,
+                      itemBuilder: (BuildContext context2, int index) {
+                        return _chats[index];
+                      }),
         ),
         Positioned(
           bottom: 16,

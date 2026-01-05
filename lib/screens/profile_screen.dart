@@ -1108,7 +1108,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       await FirebaseUserTools.update('${user.uid}/badges/$badgeId', {
         'status': 'accepted',
       });
-      await _loadBadges(); // Reload badges
+      if (mounted) {
+        await _loadBadges(); // Reload badges
+      }
     } catch (e) {
       print('Error accepting badge: $e');
     }
@@ -1120,7 +1122,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     try {
       await FirebaseUserTools.ref.child('${user.uid}/badges/$badgeId').remove();
-      await _loadBadges(); // Reload badges
+      if (mounted) {
+        await _loadBadges(); // Reload badges
+      }
     } catch (e) {
       print('Error rejecting badge: $e');
     }
@@ -1168,7 +1172,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     try {
       await FirebaseUserTools.ref.child('${user.uid}/badges/$badgeId').remove();
-      await _loadBadges(); // Reload badges
+      if (mounted) {
+        await _loadBadges(); // Reload badges
+      }
     } catch (e) {
       print('Error deleting badge: $e');
     }
