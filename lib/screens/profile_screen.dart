@@ -25,6 +25,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String? _pairToken;
   String? _bio;
   String? _displayName;
+  int _karma = 0;
   List<Map<String, dynamic>> _badges = [];
   bool _badgesExpanded = false;
   bool _notificationEnabled = false;
@@ -40,6 +41,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _loadProfilePicture(); // Load initial profile picture if it exists
       _loadPairToken(); // Load pair token
       _loadBio(); // Load bio if it exists
+      _loadKarma(); // Load karma
       _loadBadges(); // Load badges
     });
   }
@@ -207,8 +209,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               'id': key,
               'giver': value['giver'] ?? 'Badge',
               'reason': value['reason'] ?? '',
-              'icon': value['icon'] ?? Icons.star,
+              'icon': value['icon'] ?? 'Star',
               'time': value['time'] ?? '',
+              'status': value['status'] ??
+                  'accepted', // Default to accepted if missing
               ...value,
             });
           }
@@ -282,6 +286,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
       } catch (e) {
         //Error loading pair token: $e');
         // Token might not exist yet, that's okay
+      }
+    }
+  }
+
+  Future<void> _loadKarma() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      try {
+        dynamic karmaData = await FirebaseUserTools.load('${user.uid}/karma');
+        int karma = 0;
+        if (karmaData is int) {
+          karma = karmaData;
+        } else if (karmaData is String) {
+          karma = int.tryParse(karmaData) ?? 0;
+        } else if (karmaData is double) {
+          karma = karmaData.toInt();
+        } else {
+          karma = int.tryParse(karmaData.toString()) ?? 0;
+        }
+        if (mounted) {
+          setState(() {
+            _karma = karma;
+          });
+        }
+      } catch (e) {
+        // Karma might not exist yet, default to 0
+        if (mounted) {
+          setState(() {
+            _karma = 0;
+          });
+        }
       }
     }
   }
@@ -633,6 +668,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                             textAlign: TextAlign.center,
                           ),
+                          const SizedBox(height: 16),
+                          // Total Kindness Points
+                          Text(
+                            'Total Kindness Points:',
+                            style: GoogleFonts.nunito(
+                              fontSize: 16,
+                              color: Colors.grey[600],
+                              fontWeight: FontWeight.w500,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _karma.toString(),
+                            style: GoogleFonts.nunito(
+                              fontSize: 16,
+                              color: const Color(0xFF667eea),
+                              fontWeight: FontWeight.w600,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
                         ],
                       ),
                     const SizedBox(height: 16),
@@ -874,27 +930,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
         final giverEmail = badge['giverEmail'] as String? ?? '';
         final reason = badge['reason'] as String? ?? '';
         final time = badge['time'] as String? ?? '';
+        final status = badge['status'] as String? ?? 'accepted';
+        final badgeId = badge['id'] as String? ?? '';
         final iconData = _getIconData(badge['icon']);
 
         return _buildBadgeItem(
+          badgeId: badgeId,
           name: giverDisplayName,
           email: giverEmail,
           description: reason,
           icon: iconData,
           time: time,
+          status: status,
         );
       },
     );
   }
 
   Widget _buildBadgeItem({
+    required String badgeId,
     required String name,
     required String email,
     required String description,
     required IconData icon,
     required String time,
+    required String status,
   }) {
-    return Container(
+    final isPending = status == 'pending';
+
+    Widget badgeContent = Container(
       decoration: BoxDecoration(
         color: const Color(0xFF667eea).withOpacity(0.1),
         borderRadius: BorderRadius.circular(16),
@@ -903,87 +967,211 @@ class _ProfileScreenState extends State<ProfileScreen> {
           width: 1,
         ),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 20,
-              color: const Color(0xFF667eea),
-            ),
-            const SizedBox(height: 5),
-            Text(
-              'Given by: $name',
-              style: GoogleFonts.nunito(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: const Color(0xFF667eea),
-              ),
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            if (email.isNotEmpty) ...[
-              const SizedBox(height: 2),
-              Text(
-                email,
-                style: GoogleFonts.nunito(
-                  fontSize: 13,
-                  color: Colors.grey[600],
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Icon(
+                  icon,
+                  size: 20,
+                  color: const Color(0xFF667eea),
                 ),
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-            const SizedBox(height: 4),
-            Builder(
-              builder: (context) {
-                final scrollController = ScrollController();
-                return Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Scrollbar(
-                      controller: scrollController,
-                      thumbVisibility: true,
-                      thickness: 2,
-                      radius: const Radius.circular(2),
-                      child: SingleChildScrollView(
-                        controller: scrollController,
-                        scrollDirection: Axis.horizontal,
-                        child: Text(
-                          'Reason: $description',
-                          style: GoogleFonts.nunito(
-                            fontSize: 12,
-                            color: Colors.grey[700],
+                const SizedBox(height: 5),
+                Text(
+                  'Given by: $name',
+                  style: GoogleFonts.nunito(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF667eea),
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (email.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    email,
+                    style: GoogleFonts.nunito(
+                      fontSize: 13,
+                      color: Colors.grey[600],
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+                const SizedBox(height: 4),
+                Builder(
+                  builder: (context) {
+                    final scrollController = ScrollController();
+                    return Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Scrollbar(
+                          controller: scrollController,
+                          thumbVisibility: true,
+                          thickness: 2,
+                          radius: const Radius.circular(2),
+                          child: SingleChildScrollView(
+                            controller: scrollController,
+                            scrollDirection: Axis.horizontal,
+                            child: Text(
+                              'Reason: $description',
+                              style: GoogleFonts.nunito(
+                                fontSize: 12,
+                                color: Colors.grey[700],
+                              ),
+                              textAlign: TextAlign.center,
+                              softWrap: false,
+                            ),
                           ),
-                          textAlign: TextAlign.center,
-                          softWrap: false,
                         ),
+                      ],
+                    );
+                  },
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Timestamp: ${formatTimeStamp(time)}',
+                  style: GoogleFonts.nunito(
+                    fontSize: 12,
+                    color: Colors.grey[700],
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          if (!isPending)
+            Positioned(
+              top: 0,
+              right: 0,
+              child: Material(
+                color: Colors.transparent,
+                child: PopupMenuButton<String>(
+                  padding: EdgeInsets.zero,
+                  icon: const Icon(
+                    Icons.more_vert,
+                    size: 20,
+                    color: Color(0xFF667eea),
+                  ),
+                  onSelected: (value) {
+                    if (value == 'delete') {
+                      _showDeleteConfirmation(badgeId);
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    const PopupMenuItem(
+                      value: 'delete',
+                      child: Row(
+                        children: [
+                          Icon(Icons.delete, color: Colors.red, size: 20),
+                          SizedBox(width: 8),
+                          Text('Delete Badge'),
+                        ],
                       ),
                     ),
                   ],
-                );
-              },
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Timestamp: ${formatTimeStamp(time)}',
-              style: GoogleFonts.nunito(
-                fontSize: 12,
-                color: Colors.grey[700],
+                ),
               ),
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
             ),
-          ],
-        ),
+        ],
       ),
     );
+
+    if (isPending) {
+      return _PendingBadgeWidget(
+        badgeContent: badgeContent,
+        badgeId: badgeId,
+        onAccept: () => _acceptBadge(badgeId),
+        onReject: () => _rejectBadge(badgeId),
+      );
+    }
+
+    return badgeContent;
+  }
+
+  Future<void> _acceptBadge(String badgeId) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      await FirebaseUserTools.update('${user.uid}/badges/$badgeId', {
+        'status': 'accepted',
+      });
+      await _loadBadges(); // Reload badges
+    } catch (e) {
+      print('Error accepting badge: $e');
+    }
+  }
+
+  Future<void> _rejectBadge(String badgeId) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      await FirebaseUserTools.ref.child('${user.uid}/badges/$badgeId').remove();
+      await _loadBadges(); // Reload badges
+    } catch (e) {
+      print('Error rejecting badge: $e');
+    }
+  }
+
+  void _showDeleteConfirmation(String badgeId) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          title: const Text('Delete Badge'),
+          content: const Text(
+            'Are you sure you want to delete this badge? This action cannot be undone.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _deleteBadge(badgeId);
+              },
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.red,
+              ),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _deleteBadge(String badgeId) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      await FirebaseUserTools.ref.child('${user.uid}/badges/$badgeId').remove();
+      await _loadBadges(); // Reload badges
+    } catch (e) {
+      print('Error deleting badge: $e');
+    }
   }
 
   IconData _getIconData(dynamic iconValue) {
@@ -993,22 +1181,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } else if (iconValue is String) {
       // Map common icon names to IconData
       switch (iconValue.toLowerCase()) {
-        case 'star':
-          return Icons.star;
-        case 'favorite':
+        case 'love':
           return Icons.favorite;
-        case 'thumb_up':
+        case 'support':
           return Icons.thumb_up;
-        case 'emoji_events':
-          return Icons.emoji_events;
-        case 'local_fire_department':
-          return Icons.local_fire_department;
-        case 'diamond':
-          return Icons.diamond;
-        case 'celebration':
+        case 'excellence':
+          return Icons.star;
+        case 'insight':
+          return Icons.lightbulb;
+        case 'joy':
           return Icons.celebration;
-        case 'workspace_premium':
-          return Icons.workspace_premium;
+        case 'help':
+          return Icons.handshake;
         default:
           return Icons.star;
       }
@@ -1712,6 +1896,84 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PendingBadgeWidget extends StatefulWidget {
+  final Widget badgeContent;
+  final String badgeId;
+  final VoidCallback onAccept;
+  final VoidCallback onReject;
+
+  const _PendingBadgeWidget({
+    required this.badgeContent,
+    required this.badgeId,
+    required this.onAccept,
+    required this.onReject,
+  });
+
+  @override
+  State<_PendingBadgeWidget> createState() => _PendingBadgeWidgetState();
+}
+
+class _PendingBadgeWidgetState extends State<_PendingBadgeWidget> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: Stack(
+        children: [
+          widget.badgeContent,
+          if (_isHovered)
+            Positioned.fill(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Accept button
+                    Container(
+                      margin: const EdgeInsets.only(right: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.green,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: IconButton(
+                        icon: const Icon(Icons.check,
+                            color: Colors.white, size: 20),
+                        onPressed: widget.onAccept,
+                        padding: const EdgeInsets.all(8),
+                        constraints: const BoxConstraints(),
+                      ),
+                    ),
+                    // Reject button
+                    Container(
+                      margin: const EdgeInsets.only(left: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: IconButton(
+                        icon: const Icon(Icons.close,
+                            color: Colors.white, size: 20),
+                        onPressed: widget.onReject,
+                        padding: const EdgeInsets.all(8),
+                        constraints: const BoxConstraints(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
         ],
       ),
     );
