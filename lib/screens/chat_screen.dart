@@ -100,6 +100,36 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
   void initState() {
     super.initState();
 
+    // WidgetsBinding.instance.addPostFrameCallback((_) async {
+    //   if (await FirebaseUserTools.load(
+    //           '${FirebaseAuth.instance.currentUser?.uid}/karma') <
+    //       -100) {
+    //     if (mounted) {
+    //       showDialog(
+    //           context: context,
+    //           barrierDismissible: false,
+    //           builder: (BuildContext context) {
+    //             return AlertDialog(
+    //               backgroundColor: Colors.white,
+    //               shape: RoundedRectangleBorder(
+    //                 borderRadius: BorderRadius.circular(12),
+    //               ),
+    //               title: const Text("Your account has been terminated."),
+    //               content: const Text("Reason: Too little karma."),
+    //               actions: [
+    //                 TextButton(
+    //                     onPressed: () async {
+    //                       await FirebaseAuth.instance.signOut();
+    //                       if (mounted) Navigator.pop(context);
+    //                     },
+    //                     child: const Text("Log out"))
+    //               ],
+    //             );
+    //           });
+    //     }
+    //   }
+    // });
+
     () async {
       _actualTitle = widget.title;
 
@@ -333,6 +363,36 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
                 FirebaseChatTools.filter.getAllProfanity(v).length);
       }
     }
+
+    if (await FirebaseUserTools.load(
+            '${FirebaseAuth.instance.currentUser?.uid}/karma') <=
+        -100) {
+      if (mounted) {
+        showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (BuildContext context2) {
+              return AlertDialog(
+                backgroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                title: const Text("Your account has been terminated."),
+                content: const Text("Reason: Too little karma."),
+                actions: [
+                  TextButton(
+                      onPressed: () async {
+                        await FirebaseAuth.instance.signOut();
+                        if (mounted) Navigator.pop(context);
+
+                        setState(() {});
+                      },
+                      child: const Text("Log out"))
+                ],
+              );
+            });
+      }
+    }
   }
 
   Future<void> _analyzeWithAI({String type = 'message'}) async {
@@ -429,7 +489,7 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
         Center(
             child: ConstrainedBox(
                 constraints: BoxConstraints(
-                    maxWidth: MediaQuery.sizeOf(context).width - 220),
+                    maxWidth: MediaQuery.sizeOf(context).width - 270),
                 child: Text(_actualTitle ?? widget.title))),
         const SizedBox(width: 40),
         IconButton(
@@ -650,7 +710,7 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
             tooltip: "Show Karma Chart",
             icon: const Icon(Icons.show_chart)),
         _evaluateButton
-      ])),
+    ])),
       Column(children: <Widget>[
         Container(
           decoration: BoxDecoration(
@@ -861,7 +921,7 @@ class _ChatPageState extends State<ChatPage> {
             ),
             ConstrainedBox(
                 constraints: BoxConstraints(
-                    maxWidth: MediaQuery.sizeOf(context).width - 260),
+                    maxWidth: MediaQuery.sizeOf(context).width - 220),
                 child: Text(
                   title ?? "Chat ${_chats.length + 1}",
                   style: const TextStyle(fontSize: 16),
@@ -975,6 +1035,7 @@ class _ChatPageState extends State<ChatPage> {
                           setState(() {});
                         },
                         controller: uidController,
+                        maxLength: 150,
                       ),
                       actions: [
                         TextButton(

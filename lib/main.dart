@@ -1,4 +1,5 @@
 // import 'package:empathy_exchange/lib/firebase.dart';
+import 'package:empathy_exchange/lib/firebase.dart';
 import 'package:empathy_exchange/screens/chat_screen.dart';
 import 'package:empathy_exchange/widgets/material.dart';
 import 'package:flutter/material.dart';
@@ -113,6 +114,41 @@ class _HomePageState extends State<HomePage> {
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (await FirebaseUserTools.load(
+              '${FirebaseAuth.instance.currentUser?.uid}/karma') <=
+          -100) {
+        if (mounted) {
+          showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (BuildContext context2) {
+                return AlertDialog(
+                  backgroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  title: const Text("Your account has been terminated."),
+                  content: const Text("Reason: Too little karma."),
+                  actions: [
+                    TextButton(
+                        onPressed: () async {
+                          await FirebaseAuth.instance.signOut();
+                          if (mounted) Navigator.pop(context);
+                        },
+                        child: const Text("Log out"))
+                  ],
+                );
+              });
+        }
+      }
     });
   }
 
