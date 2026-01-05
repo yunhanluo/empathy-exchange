@@ -49,21 +49,25 @@ class FirebaseUserTools {
     Map users = await load('/');
     for (String uid in users.keys) {
       String? testToken;
-      
+
       // Try to load pairToken first
       try {
         testToken = await load('$uid/pairToken') as String?;
+        print("Test token: $testToken");
+        print("Token we want $token");
       } catch (e) {
         // If pairToken doesn't exist, try email
         try {
           testToken = await load('$uid/email') as String?;
+          print("Test tokenEmail: $testToken");
         } catch (e2) {
           // Neither exists, skip this user
           continue;
         }
       }
-      
+
       if (testToken == token) {
+        print("Found UID: $uid with token: $testToken");
         return uid;
       }
     }

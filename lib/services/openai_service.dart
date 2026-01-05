@@ -31,11 +31,13 @@ class OpenAIService {
           Your specific mission is to assign points unbiasedly to people as they interact. 
           You're supposed to evaluate messages for everyone.  
           You are given a summary of the conversation so far. You are going to be given the last 10 messages in the conversation. The points given or taken away will range from -10 to 10, with -10 being a very negative interaction and 10 being
-          a very positive one. Return a JSON object with an evaluations array containg a list of evaluations. Each evaluation should be JSON objects with the user's email and the points you assign them. 
+          a very positive one. Return a JSON object with an evaluations array containg a list of evaluations. Each evaluation should be JSON objects with the user's email and the points you assign them.
+          For example, if the user's email is "test@test.com", the evaluation should be {"test@test.com": 10}, not {"email": "test@test.com", "points": 10}. This will cause an error. It is not okay.
           Outside of the evaluations array, include a reasoning field for your reasoning, that is, the rationale behind the way you have assigned points to users. If possible, include a message field with your advice, 
           a comment, or something uplifting. It is fine if there is nothing to say.
           This field must be called message. Do not include any other fields.
-          Check to see that you have evaluations for AL users in the sample of the conversation.'''
+          Check to see that you have evaluations for AL users in the sample of the conversation.
+          Also, it is highly important that you do not randomly decide to change the case of the emails in any way. For example, do not change "test@test.com" to "Test@Test.com".'''
     }
   ];
 
@@ -115,8 +117,6 @@ class OpenAIService {
           });
         }
       } catch (e) {
-        print('Urk!!!!!!!! Not good!');
-        print('Error: $e');
         karmaHistory = {};
         print(chatLength);
         for (String user in userList) {
@@ -259,9 +259,8 @@ class OpenAIService {
             for (MapEntry<String, int> entry in evaluation.entries) {
               String email = entry.key;
               String? uid = await FirebaseUserTools.getUidFromToken(
-                  email); //Doesn't really work, apparently!
-              String displayName =
-                  await FirebaseUserTools.load('$uid/displayName') ?? email;
+                  entry.key); //Doesn't really work, apparently!
+              String displayName = email;
               int points = entry.value;
               String formattedEmail =
                   email.replaceAll('.', '_dot_').replaceAll('@', '_at_');
@@ -291,7 +290,7 @@ class OpenAIService {
                   "${points.abs()} ${points == 1 ? 'point has' : 'points have'} been ${points >= 0 ? 'added' : 'deducted'} ${points >= 0 ? 'to' : 'from'} $displayName's total. (Email: $email)' \n \n";
             }
           }
-
+          print("Final message: $finalMessage");
           await FirebaseChatTools.listPush('$chatKey/data', {
             'sender': 'system',
             'text':
