@@ -103,6 +103,36 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
   void initState() {
     super.initState();
 
+    // WidgetsBinding.instance.addPostFrameCallback((_) async {
+    //   if (await FirebaseUserTools.load(
+    //           '${FirebaseAuth.instance.currentUser?.uid}/karma') <
+    //       -100) {
+    //     if (mounted) {
+    //       showDialog(
+    //           context: context,
+    //           barrierDismissible: false,
+    //           builder: (BuildContext context) {
+    //             return AlertDialog(
+    //               backgroundColor: Colors.white,
+    //               shape: RoundedRectangleBorder(
+    //                 borderRadius: BorderRadius.circular(12),
+    //               ),
+    //               title: const Text("Your account has been terminated."),
+    //               content: const Text("Reason: Too little karma."),
+    //               actions: [
+    //                 TextButton(
+    //                     onPressed: () async {
+    //                       await FirebaseAuth.instance.signOut();
+    //                       if (mounted) Navigator.pop(context);
+    //                     },
+    //                     child: const Text("Log out"))
+    //               ],
+    //             );
+    //           });
+    //     }
+    //   }
+    // });
+
     () async {
       _actualTitle = widget.title;
 
@@ -334,6 +364,36 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
             int.parse(thing) - filter.getAllProfanity(v).length);
       }
     }
+
+    if (await FirebaseUserTools.load(
+            '${FirebaseAuth.instance.currentUser?.uid}/karma') <=
+        -100) {
+      if (mounted) {
+        showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (BuildContext context2) {
+              return AlertDialog(
+                backgroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                title: const Text("Your account has been terminated."),
+                content: const Text("Reason: Too little karma."),
+                actions: [
+                  TextButton(
+                      onPressed: () async {
+                        await FirebaseAuth.instance.signOut();
+                        if (mounted) Navigator.pop(context);
+
+                        setState(() {});
+                      },
+                      child: const Text("Log out"))
+                ],
+              );
+            });
+      }
+    }
   }
 
   Future<void> _analyzeWithAI() async {
@@ -426,7 +486,8 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
           title: Row(children: <Widget>[
         Center(
             child: ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width - 220),
+                constraints: BoxConstraints(
+                    maxWidth: MediaQuery.sizeOf(context).width - 270),
                 child: Text(_actualTitle ?? widget.title))),
         const SizedBox(width: 40),
         IconButton(
@@ -856,11 +917,14 @@ class _ChatPageState extends State<ChatPage> {
                 children: pfps,
               ),
             ),
-            ConstrainedBox(constraints:BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width - 220),child:Text(
-              title ?? "Chat ${_chats.length + 1}",
-              style: const TextStyle(fontSize: 16),
-              textAlign: TextAlign.left,
-            )),
+            ConstrainedBox(
+                constraints: BoxConstraints(
+                    maxWidth: MediaQuery.sizeOf(context).width - 220),
+                child: Text(
+                  title ?? "Chat ${_chats.length + 1}",
+                  style: const TextStyle(fontSize: 16),
+                  textAlign: TextAlign.left,
+                )),
             const Icon(
               Icons.arrow_forward_ios, // Right arrow icon
               size: 16,
@@ -969,6 +1033,7 @@ class _ChatPageState extends State<ChatPage> {
                           setState(() {});
                         },
                         controller: uidController,
+                        maxLength: 150,
                       ),
                       actions: [
                         TextButton(
