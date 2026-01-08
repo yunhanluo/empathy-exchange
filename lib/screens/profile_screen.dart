@@ -600,7 +600,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               // Profile Header Card
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(32),
+                padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(24),

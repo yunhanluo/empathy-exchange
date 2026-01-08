@@ -74,6 +74,7 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
   final List<Widget> _messages = <Widget>[];
 
   Widget _evaluateButton = const SizedBox.shrink();
+  Widget _deleteButton = const SizedBox.shrink();
 
   StreamSubscription<DatabaseEvent>? _subscription;
   DatabaseReference? thisRef;
@@ -286,9 +287,18 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
               tooltip: "Evaluate chat",
               icon: const Icon(Icons.psychology))
           : const SizedBox.shrink();
+      final Widget deleteTemp = thing['owner'] == widget.myToken
+          ? IconButton(
+              onPressed: () {
+                _showDeleteConfirmation();
+              },
+              tooltip: "Delete chat",
+              icon: const Icon(Icons.delete))
+          : const SizedBox.shrink();
 
       setState(() {
         _evaluateButton = evalTemp;
+        _deleteButton = deleteTemp;
       });
     }();
 
@@ -388,6 +398,29 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
               );
             });
       }
+    }
+  }
+
+  Future<void> _showDeleteConfirmation() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+          title: const Text('Delete Chat'),
+          content: const Text(
+              'Are you sure you want to delete this chat? This action cannot be undone. Only the owner can delete the chat.'),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Cancel')),
+            TextButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('Delete')),
+          ]),
+    );
+    if (confirmed == true) {
+      Map data = await FirebaseChatTools.load('/');
+      String chatKey = data.keys.elementAt(widget.chatId);
+      await FirebaseChatTools.ref.child(chatKey).remove();
     }
   }
 
@@ -508,14 +541,7 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
   @override
   Widget build(BuildContext context) {
     return appInstance(Column(children: <Widget>[
-      AppBar(
-          title: Row(children: <Widget>[
-        Center(
-            child: ConstrainedBox(
-                constraints: BoxConstraints(
-                    maxWidth: MediaQuery.sizeOf(context).width - 270),
-                child: Text(_actualTitle ?? widget.title))),
-        const SizedBox(width: 40),
+      AppBar(title: Text(_actualTitle ?? widget.title), actions: [
         IconButton(
             onPressed: () {
               showDialog(
@@ -733,8 +759,9 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
             },
             tooltip: "Show Karma Chart",
             icon: const Icon(Icons.show_chart)),
-        _evaluateButton
-      ])),
+        _evaluateButton,
+        _deleteButton
+      ]),
       Column(children: <Widget>[
         Container(
           decoration: BoxDecoration(
