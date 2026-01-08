@@ -135,7 +135,7 @@ class _MessageState extends State<Message> {
     await FirebaseChatTools.listPush('$name/data', {
       "sender": 'system',
       "text":
-          "${await FirebaseUserTools.load('${FirebaseAuth.instance.currentUser?.uid}/displayName')} gave ${await FirebaseUserTools.load('$uid/displayName')} a kindness badge! Reason: $reason",
+          "${await FirebaseUserTools.load('${FirebaseAuth.instance.currentUser?.uid}/displayName')} gave ${await FirebaseUserTools.load('$uid/displayName')} a kindness badge! Badge category: $icon. Reason: $reason",
     });
 
     dynamic messagesSnapshot = await FirebaseChatTools.load('$name/data');
@@ -178,7 +178,7 @@ class _MessageState extends State<Message> {
     String userEmail = await FirebaseUserTools.load('$uid/email');
     String formattedEmail =
         userEmail.replaceAll('.', '_dot_').replaceAll('@', '_at_');
-    print('ChatLength: $chatLength');
+    //print('ChatLength: $chatLength');
 
     // Create the user's history map if it doesn't exist
     if (karmaHistory[formattedEmail] == null) {
@@ -188,7 +188,7 @@ class _MessageState extends State<Message> {
     karmaHistory[formattedEmail]![chatLength] =
         (karmaHistory[formattedEmail]![chatLength] ?? 0) + 1;
 
-    print(karmaHistory);
+    //print(karmaHistory);
     await FirebaseChatTools.set('$name/karmaHistory', karmaHistory);
   }
 
@@ -324,7 +324,7 @@ class _MessageState extends State<Message> {
                         TextButton(
                           onPressed: () async {
                             if (selectedIcon != null) {
-                              print("Selected icon: $selectedIcon");
+                              //print("Selected icon: $selectedIcon");
                               String reason = selectedReason ??
                                   _getDefaultReason(selectedIcon!);
                               _giveBadge(reason, selectedIcon!);

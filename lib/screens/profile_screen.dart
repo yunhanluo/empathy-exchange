@@ -726,9 +726,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           });
                         },
                         trailing: Icon(
-                          _badgesExpanded
-                              ? Icons.expand_less
-                              : Icons.expand_more,
+                          Icons.arrow_forward_ios,
                           color: Colors.grey[400],
                           size: 16,
                         ),

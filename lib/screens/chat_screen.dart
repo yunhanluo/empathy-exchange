@@ -219,7 +219,7 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
                 sender.replaceAll('.', '_dot_').replaceAll('@', '_at_');
             pfp = await FirebaseUserTools.load(
                 'profilePictures/$emailKey/profilePicture');
-            print("Look! It's now ${_aiAnalysisEnabled}");
+            //print("Look! It's now ${_aiAnalysisEnabled}");
             if (_aiAnalysisEnabled) {
               _analyzeWithAI();
             }
@@ -281,7 +281,7 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
       final Widget evalTemp = thing['owner'] == widget.myToken
           ? IconButton(
               onPressed: () {
-                _analyzeWithAI(type: 'owner');
+                _showEvaluationConfirmation();
               },
               tooltip: "Evaluate chat",
               icon: const Icon(Icons.psychology))
@@ -392,6 +392,32 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
               );
             });
       }
+    }
+  }
+
+  Future<void> _showEvaluationConfirmation() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Evaluate Chat'),
+        content: const Text(
+          'This will evaluate the last 10 messages for all participants and assign kindness points. Do you want to continue?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Confirm'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      _analyzeWithAI(type: 'owner');
     }
   }
 
@@ -849,7 +875,7 @@ class _ChatPageState extends State<ChatPage> {
           if (mounted) Navigator.of(context).pop();
           rebuildChats();
         } catch (e) {
-          print(e);
+          //print(e);
           if (mounted) Navigator.of(context).pop();
           rebuildChats();
           return;

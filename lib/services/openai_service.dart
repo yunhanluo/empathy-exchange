@@ -18,7 +18,8 @@ class OpenAIService {
           a very positive one. Your response must be a json string with reasoning, 
           a string, and points, an integer. Your reasoning should be concise. Make sure that it's not too similar to the given summary.
           If possible, include a message field with your advice, a comment, or something uplifting. It is fine if there is nothing to say.
-          This field must be called message. These should be the ONLY FIELDS INCLUDED. Or else I will be forced to create a JSON schema.'''
+          This field must be called message. These should be the ONLY FIELDS INCLUDED. Or else I will be forced to create a JSON schema.
+          **** or something similar indicates profanity, by the way. It is almost always bad.'''
     }
   ];
 
@@ -33,11 +34,13 @@ class OpenAIService {
           You are given a summary of the conversation so far. You are going to be given the last 10 messages in the conversation. The points given or taken away will range from -10 to 10, with -10 being a very negative interaction and 10 being
           a very positive one. Return a JSON object with an evaluations array containg a list of evaluations. Each evaluation should be JSON objects with the user's email and the points you assign them.
           For example, if the user's email is "test@test.com", the evaluation should be {"test@test.com": 10}, not {"email": "test@test.com", "points": 10}. This will cause an error. It is not okay.
-          Outside of the evaluations array, include a reasoning field for your reasoning, that is, the rationale behind the way you have assigned points to users. If possible, include a message field with your advice, 
-          a comment, or something uplifting. It is fine if there is nothing to say.
-          This field must be called message. Do not include any other fields.
-          Check to see that you have evaluations for AL users in the sample of the conversation.
-          Also, it is highly important that you do not randomly decide to change the case of the emails in any way. For example, do not change "test@test.com" to "Test@Test.com".'''
+          Outside of the evaluations array, include a reasoning field for your reasoning, that is, the rationale behind the way you have assigned points to users. Also include a message field with your advice, 
+          a comment, or something uplifting. If there is nothing to say, return an empty string: "".
+          For example, "message": "Keep it up! You're doing great!"
+          Check to see that you have evaluations for ALL users in the sample of the conversation.
+          DO NOT include a field called "advice." This is not a valid field.
+          Also, it is highly important that you do not randomly decide to change the case of the emails in any way. For example, do not change "test@test.com" to "Test@Test.com".
+          **** or something similar indicates profanity, by the way. It is almost always bad.'''
     }
   ];
 
@@ -134,8 +137,8 @@ class OpenAIService {
 
       // Only analyze if chat length is divisible by 5
       if (type == 'owner' || (chatLength > 0 && chatLength % 5 == 0)) {
-        print("Creating summary");
-        print("Chat length: $chatLength");
+        // print("Creating summary");
+        // print("Chat length: $chatLength");
         List<MapEntry<String, dynamic>> recentEntries;
         if (type == 'message') {
           recentEntries = entries.length > 5
@@ -161,6 +164,7 @@ class OpenAIService {
         if (!userIncluded) return;
 
         String messagesText = messagesList.join('\n');
+        //print("Hey! Over here! Messages text: $messagesText");
 
         List<Map<String, String>> sysPrompt = [
           ...systemPromptSummary,
@@ -190,11 +194,12 @@ class OpenAIService {
         final summaryData = jsonDecode(summaryResponse.body);
         String summaryText =
             summaryData['choices']?[0]?['message']?['content'] ?? '';
-        print('Summary: $summaryText');
+        //print('Summary: $summaryText');
 
-        print('Creating evaluation');
+        //print('Creating evaluation');
 
-        // Create evaluation prompt with entire chat history (not summary)
+        String evaluateFor = type == 'owner' ? 'everyone' : email;
+
         List<Map<String, String>> evalPrompt = [
           ...type == 'owner'
               ? systemPromptOwnerEvaluation
@@ -202,7 +207,7 @@ class OpenAIService {
           {
             'role': 'user',
             'content':
-                'Here is the summary of the conversation so far:\n $summaryText\nNow evaluate the messages for the user: $email'
+                'Here is the summary of the conversation so far:\n $summaryText\n Now here are the latest messages. \n $messagesText. Please evaluate the messages for $evaluateFor.'
           }
         ];
 
@@ -225,7 +230,7 @@ class OpenAIService {
         final evalData = jsonDecode(evalResponse.body);
         String evaluationText =
             evalData['choices']?[0]?['message']?['content'] ?? '';
-        print('Evaluation text: $evaluationText');
+        //print('Evaluation text: $evaluationText');
         Map<String, dynamic> jsonResponse = jsonDecode(evaluationText);
         String reasoning = jsonResponse['reasoning'] ?? '';
         String message = jsonResponse['message'] ?? '';
@@ -258,9 +263,9 @@ class OpenAIService {
           for (Map<String, int> evaluation in evaluations) {
             for (MapEntry<String, int> entry in evaluation.entries) {
               String email = entry.key;
-              String? uid = await FirebaseUserTools.getUidFromToken(
-                  entry.key); //Doesn't really work, apparently!
-              String displayName = email;
+              String? uid = await FirebaseUserTools.getUidFromToken(entry.key);
+              String displayName =
+                  await FirebaseUserTools.load('$uid/displayName');
               int points = entry.value;
               String formattedEmail =
                   email.replaceAll('.', '_dot_').replaceAll('@', '_at_');
@@ -287,14 +292,14 @@ class OpenAIService {
               }
               await FirebaseUserTools.set('$uid/karma', currentKarma + points);
               finalMessage +=
-                  "${points.abs()} ${points == 1 ? 'point has' : 'points have'} been ${points >= 0 ? 'added' : 'deducted'} ${points >= 0 ? 'to' : 'from'} $displayName's total. (Email: $email)' \n \n";
+                  "${points.abs()} ${points == 1 ? 'point has' : 'points have'} been ${points >= 0 ? 'added' : 'deducted'} ${points >= 0 ? 'to' : 'from'} $displayName's total. (Email: $email) \n \n";
             }
           }
-          print("Final message: $finalMessage");
+          //print("Final message: $finalMessage");
           await FirebaseChatTools.listPush('$chatKey/data', {
             'sender': 'system',
             'text':
-                '''Our AI has evaluated the last ten messages for empathy, kindness, and positivity. \n $finalMessage Here is the AI's evaluation of the state of the conversation: "$reasoning \n \n ${message == '' ? '' : 'The AI would like to share the following message:'} $message''',
+                '''Our AI has evaluated the last ten messages for empathy, kindness, and positivity. \n\n $finalMessage Here is the AI's evaluation of the state of the conversation: $reasoning \n \n ${message == '' ? '' : 'The AI would like to share the following message:'} $message''',
           });
         } else {
           int points = jsonResponse['points'] ?? 0;
@@ -307,7 +312,7 @@ class OpenAIService {
           }
           karmaHistory[formattedEmailKey]?[chatLength] = points;
 
-          print("Karma history: $karmaHistory");
+          //print("Karma history: $karmaHistory");
 
           await FirebaseChatTools.set('$chatKey/karmaHistory', karmaHistory);
 
@@ -335,7 +340,7 @@ class OpenAIService {
         await FirebaseChatTools.set('$chatKey/summary', summaryText);
       }
     } catch (e) {
-      print('OpenAI Error: $e');
+      //print('OpenAI Error: $e');
       rethrow;
     }
   }
