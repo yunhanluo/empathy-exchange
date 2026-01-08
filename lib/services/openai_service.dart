@@ -121,7 +121,7 @@ class OpenAIService {
         }
       } catch (e) {
         karmaHistory = {};
-        print(chatLength);
+        // print(chatLength);
         for (String user in userList) {
           karmaHistory[user.replaceAll('.', '_dot_').replaceAll('@', '_at_')] =
               {
@@ -137,8 +137,8 @@ class OpenAIService {
 
       // Only analyze if chat length is divisible by 5
       if (type == 'owner' || (chatLength > 0 && chatLength % 5 == 0)) {
-        // print("Creating summary");
-        // print("Chat length: $chatLength");
+        // // print("Creating summary");
+        // // print("Chat length: $chatLength");
         List<MapEntry<String, dynamic>> recentEntries;
         if (type == 'message') {
           recentEntries = entries.length > 5
@@ -194,11 +194,9 @@ class OpenAIService {
         final summaryData = jsonDecode(summaryResponse.body);
         String summaryText =
             summaryData['choices']?[0]?['message']?['content'] ?? '';
-        //print('Summary: $summaryText');
+        // print('Summary: $summaryText');
 
-        //print('Creating evaluation');
-
-        String evaluateFor = type == 'owner' ? 'everyone' : email;
+        // print('Creating evaluation');
 
         List<Map<String, String>> evalPrompt = [
           ...type == 'owner'
@@ -230,7 +228,7 @@ class OpenAIService {
         final evalData = jsonDecode(evalResponse.body);
         String evaluationText =
             evalData['choices']?[0]?['message']?['content'] ?? '';
-        //print('Evaluation text: $evaluationText');
+        // print('Evaluation text: $evaluationText');
         Map<String, dynamic> jsonResponse = jsonDecode(evaluationText);
         String reasoning = jsonResponse['reasoning'] ?? '';
         String message = jsonResponse['message'] ?? '';
@@ -295,7 +293,7 @@ class OpenAIService {
                   "${points.abs()} ${points == 1 ? 'point has' : 'points have'} been ${points >= 0 ? 'added' : 'deducted'} ${points >= 0 ? 'to' : 'from'} $displayName's total. (Email: $email) \n \n";
             }
           }
-          //print("Final message: $finalMessage");
+          // print("Final message: $finalMessage");
           await FirebaseChatTools.listPush('$chatKey/data', {
             'sender': 'system',
             'text':
@@ -312,7 +310,7 @@ class OpenAIService {
           }
           karmaHistory[formattedEmailKey]?[chatLength] = points;
 
-          //print("Karma history: $karmaHistory");
+          // print("Karma history: $karmaHistory");
 
           await FirebaseChatTools.set('$chatKey/karmaHistory', karmaHistory);
 
@@ -340,7 +338,7 @@ class OpenAIService {
         await FirebaseChatTools.set('$chatKey/summary', summaryText);
       }
     } catch (e) {
-      //print('OpenAI Error: $e');
+      // print('OpenAI Error: $e');
       rethrow;
     }
   }
