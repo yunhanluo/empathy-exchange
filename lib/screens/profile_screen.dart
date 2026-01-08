@@ -6,7 +6,7 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/foundation.dart';
 import '../services/profile_service.dart';
-import '../lib/firebase.dart';
+import 'package:empathy_exchange/lib/firebase.dart';
 import 'dart:html' as html;
 
 class ProfileScreen extends StatefulWidget {
@@ -186,8 +186,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         }
       }
     } catch (e) {
-      print('Error finding UID from giver: $e');
+      // print('Error finding UID from giver: $e');
+      rethrow;
     }
+
     return null;
   }
 
@@ -252,7 +254,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 badge['giverEmail'] = giver;
               }
             } catch (e) {
-              print('Error loading giver display name: $e');
+              // print('Error loading giver display name: $e');
               badge['giverDisplayName'] = giver;
               badge['giverEmail'] = giver;
             }
@@ -262,13 +264,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
           }
         }
 
-        setState(() {
-          _badges = badgesList;
-        });
+        if (mounted) {
+          setState(() {
+            _badges = badgesList;
+          });
+        }
       }
     } catch (e) {
       // If badges don't exist yet, that's okay
-      print('Error loading badges: $e');
+      // print('Error loading badges: $e');
+      rethrow;
     }
   }
 
@@ -374,16 +379,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
         if (imageFile != null) {
           //Profile picture picked.');
 
-          // Show progress for Firestore upload
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Uploading to Firestore...',
-                style: GoogleFonts.nunito(),
+          if (mounted) {
+            // Show progress for Firestore upload
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Uploading to Firestore...',
+                  style: GoogleFonts.nunito(),
+                ),
+                duration: const Duration(seconds: 1),
               ),
-              duration: const Duration(seconds: 1),
-            ),
-          );
+            );
+          }
 
           await _profileService.updateProfilePicture(imageFile);
           //Profile picture upload to Realtime Database completed.');
@@ -398,16 +405,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
             });
             // Reload the profile picture from Realtime Database
             await _loadProfilePicture();
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  'Profile picture updated!',
-                  style: GoogleFonts.nunito(),
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'Profile picture updated!',
+                    style: GoogleFonts.nunito(),
+                  ),
+                  backgroundColor: Colors.blue,
+                  behavior: SnackBarBehavior.floating,
                 ),
-                backgroundColor: Colors.blue,
-                behavior: SnackBarBehavior.floating,
-              ),
-            );
+              );
+            }
           }
         }
       }
@@ -546,10 +555,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildDefaultAvatar(User? user) {
-    return Icon(
+    return const Icon(
       Icons.person,
       size: 60,
-      color: const Color(0xFF667eea),
+      color: Color(0xFF667eea),
     );
   }
 
@@ -1112,7 +1121,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         await _loadBadges(); // Reload badges
       }
     } catch (e) {
-      print('Error accepting badge: $e');
+      // print('Error accepting badge: $e');
+      rethrow;
     }
   }
 
@@ -1126,7 +1136,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         await _loadBadges(); // Reload badges
       }
     } catch (e) {
-      print('Error rejecting badge: $e');
+      // print('Error rejecting badge: $e');
+      rethrow;
     }
   }
 
@@ -1176,7 +1187,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         await _loadBadges(); // Reload badges
       }
     } catch (e) {
-      print('Error deleting badge: $e');
+      // print('Error deleting badge: $e');
+      rethrow;
     }
   }
 
@@ -1389,37 +1401,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } catch (e) {
       _notificationEnabled = false;
     }
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Notification Settings'),
-          content: SwitchListTile(
-            title: const Text('Enable Notifications'),
-            value: _notificationEnabled,
-            onChanged: (value) async {
-              setDialogState(() {
-                _notificationEnabled = value;
-              });
-              // Save to Firebase
-              await FirebaseUserTools.update(user.uid, {
-                'notificationEnabled': value,
-              });
-              // Request browser permission if enabling
-              if (value && kIsWeb) {
-                await html.Notification.requestPermission();
-              }
-            },
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Done'),
+
+    if (context.mounted) {
+      showDialog(
+        context: context,
+        builder: (context) => StatefulBuilder(
+          builder: (context, setDialogState) => AlertDialog(
+            title: const Text('Notification Settings'),
+            content: SwitchListTile(
+              title: const Text('Enable Notifications'),
+              value: _notificationEnabled,
+              onChanged: (value) async {
+                setDialogState(() {
+                  _notificationEnabled = value;
+                });
+                // Save to Firebase
+                await FirebaseUserTools.update(user.uid, {
+                  'notificationEnabled': value,
+                });
+                // Request browser permission if enabling
+                if (value && kIsWeb) {
+                  await html.Notification.requestPermission();
+                }
+              },
             ),
-          ],
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Done'),
+              ),
+            ],
+          ),
         ),
-      ),
-    );
+      );
+    }
   }
 
   void _showHelpAndSupport(BuildContext context) {
@@ -1837,7 +1852,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   final ref = FirebaseUserTools.ref.child(user.uid);
                   await ref.remove();
                 } catch (e) {
-                  print('Error deleting user data: $e');
+                  // print('Error deleting user data: $e');
+                  rethrow;
                 }
 
                 // Delete Firebase Auth account
@@ -1873,39 +1889,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  void _showComingSoon(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(
-          'Coming Soon!',
-          style: GoogleFonts.nunito(
-            fontWeight: FontWeight.w700,
-            color: const Color(0xFF667eea),
-          ),
-        ),
-        content: Text(
-          'This feature is under development and will be available soon.',
-          style: GoogleFonts.nunito(
-            color: Colors.grey[600],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'OK',
-              style: GoogleFonts.nunito(
-                fontWeight: FontWeight.w600,
-                color: const Color(0xFF667eea),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  // void _showComingSoon(BuildContext context) {
+  //   showDialog(
+  //     context: context,
+  //     builder: (context) => AlertDialog(
+  //       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+  //       title: Text(
+  //         'Coming Soon!',
+  //         style: GoogleFonts.nunito(
+  //           fontWeight: FontWeight.w700,
+  //           color: const Color(0xFF667eea),
+  //         ),
+  //       ),
+  //       content: Text(
+  //         'This feature is under development and will be available soon.',
+  //         style: GoogleFonts.nunito(
+  //           color: Colors.grey[600],
+  //         ),
+  //       ),
+  //       actions: [
+  //         TextButton(
+  //           onPressed: () => Navigator.pop(context),
+  //           child: Text(
+  //             'OK',
+  //             style: GoogleFonts.nunito(
+  //               fontWeight: FontWeight.w600,
+  //               color: const Color(0xFF667eea),
+  //             ),
+  //           ),
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
 }
 
 class _PendingBadgeWidget extends StatefulWidget {

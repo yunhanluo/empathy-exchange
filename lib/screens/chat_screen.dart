@@ -219,7 +219,7 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
                 sender.replaceAll('.', '_dot_').replaceAll('@', '_at_');
             pfp = await FirebaseUserTools.load(
                 'profilePictures/$emailKey/profilePicture');
-            print("Look! It's now ${_aiAnalysisEnabled}");
+            // print("Look! It's now ${_aiAnalysisEnabled}");
             if (_aiAnalysisEnabled) {
               _analyzeWithAI();
             }
@@ -290,15 +290,11 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
       setState(() {
         _evaluateButton = evalTemp;
       });
-
-      setState(() {
-        loading = false;
-      });
-
-      setState(() {});
     }();
 
-    setState(() {});
+    setState(() {
+      loading = false;
+    });
   }
 
   Future<void> _showNotification(String messageText) async {
@@ -402,12 +398,14 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
         type: type,
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -828,36 +826,36 @@ class _ChatPageState extends State<ChatPage> {
   void _runOpenChat(String enteredUid) {
     if (!mounted) return;
 
-    setState(() {
-      () async {
-        String myToken = await FirebaseUserTools.load(
-            '${FirebaseAuth.instance.currentUser!.uid}/pairToken');
+    () async {
+      String myToken = await FirebaseUserTools.load(
+          '${FirebaseAuth.instance.currentUser!.uid}/pairToken');
 
-        List<String> parts = [myToken, enteredUid];
-        parts.sort();
+      List<String> parts = [myToken, enteredUid];
+      parts.sort();
 
-        try {
-          await FirebaseChatTools.listPush('/', {
-            "tokens": parts,
-            "title":
-                '${await FirebaseUserTools.load('${FirebaseAuth.instance.currentUser!.uid}/displayName')} & ${await FirebaseUserTools.load('${await FirebaseUserTools.getUidFromToken(enteredUid)}/displayName')}',
-            "data": [
-              {"text": "This chat was created.", "sender": "system"},
-            ],
-          });
+      try {
+        await FirebaseChatTools.listPush('/', {
+          "tokens": parts,
+          "title":
+              '${await FirebaseUserTools.load('${FirebaseAuth.instance.currentUser!.uid}/displayName')} & ${await FirebaseUserTools.load('${await FirebaseUserTools.getUidFromToken(enteredUid)}/displayName')}',
+          "data": [
+            {"text": "This chat was created.", "sender": "system"},
+          ],
+        });
 
-          if (mounted) Navigator.of(context).pop();
-          rebuildChats();
-        } catch (e) {
-          print(e);
-          if (mounted) Navigator.of(context).pop();
-          rebuildChats();
-          return;
+        if (mounted) Navigator.of(context).pop();
+        await rebuildChats();
+      } catch (e) {
+        // print(e);
+        if (mounted) Navigator.of(context).pop();
+        await rebuildChats();
+        return;
+      } finally {
+        if (mounted) {
+          setState(() {});
         }
-      }();
-
-      setState(() {});
-    });
+      }
+    }();
   }
 
   void _addChatTalkPage(
@@ -921,7 +919,7 @@ class _ChatPageState extends State<ChatPage> {
             ),
             ConstrainedBox(
                 constraints: BoxConstraints(
-                    maxWidth: MediaQuery.sizeOf(context).width - 220),
+                    maxWidth: mounted ? MediaQuery.sizeOf(context).width - 220 : 100),
                 child: Text(
                   title ?? "Chat ${_chats.length + 1}",
                   style: const TextStyle(fontSize: 16),
@@ -940,7 +938,7 @@ class _ChatPageState extends State<ChatPage> {
     setState(() {});
   }
 
-  void rebuildChats() async {
+  Future<void> rebuildChats() async {
     if (!mounted) return;
 
     setState(() {
@@ -1007,7 +1005,10 @@ class _ChatPageState extends State<ChatPage> {
   @override
   void initState() {
     super.initState();
-    rebuildChats();
+
+    () async {
+      await rebuildChats();
+    }();
   }
 
   @override
