@@ -198,6 +198,8 @@ class OpenAIService {
 
         // print('Creating evaluation');
 
+        String evaluateFor = type == 'owner' ? 'everyone' : email;
+
         List<Map<String, String>> evalPrompt = [
           ...type == 'owner'
               ? systemPromptOwnerEvaluation
