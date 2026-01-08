@@ -108,7 +108,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
+                    color: Colors.black.withValues(alpha: 0.1),
                     blurRadius: 20,
                     offset: const Offset(0, 10),
                   ),
@@ -171,7 +171,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               margin: const EdgeInsets.all(8),
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF667eea).withOpacity(0.1),
+                                color: const Color(0xFF667eea).withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: const Icon(
@@ -213,7 +213,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               margin: const EdgeInsets.all(8),
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF667eea).withOpacity(0.1),
+                                color: const Color(0xFF667eea).withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: const Icon(
@@ -335,7 +335,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 borderRadius: BorderRadius.circular(8),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withOpacity(0.1),
+                                    color: Colors.black.withValues(alpha: 0.1),
                                     blurRadius: 4,
                                     offset: const Offset(0, 2),
                                   ),
