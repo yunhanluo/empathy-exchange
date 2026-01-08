@@ -178,9 +178,9 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
         }
       }
 
-      List itemList = FirebaseTools.asList(items);
-      for (JSAny? item in itemList.take(itemList.length - 1)) {
-        setState(() {
+      setState(() {
+        List itemList = FirebaseTools.asList(items);
+        for (JSAny? item in itemList.take(itemList.length - 1)) {
           Map message = item as Map;
           _messages.add(Message(
               message["text"],
@@ -200,15 +200,11 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
                   ? myKarma
                   : theirKarmas[message['sender']] ?? 0),
               widget.chatId));
-        });
-      }
+        }
 
-      _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
-
-      setState(() {
         thisRef = FirebaseChatTools.ref
             .child('/${data.keys.elementAt(widget.chatId)}/data');
-        _subscription = thisRef?.onValue.listen((event) async {
+        _subscription = thisRef!.onValue.listen((DatabaseEvent event) async {
           Map item = event.snapshot.children.last.value as Map;
           String sender = item['sender'];
 
@@ -246,34 +242,34 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
             karma = 0;
           }
 
-          setState(() {
-            if (sender != 'system') {
-              _messages.add(Message(
-                  item["text"],
-                  sender == widget.myToken
-                      ? Sender.self
-                      : (sender == 'system' ? Sender.system : Sender.other),
-                  sender,
-                  pfp,
-                  karma,
-                  widget.chatId));
-              if (sender != widget.myToken) {
-                _showNotification(item['text']);
-              }
-            } else if (sender == 'system') {
-              _messages.add(Message(
-                  item["text"],
-                  Sender.system,
-                  sender,
-                  "iVBORw0KGgoAAAANSUhEUgAAAGAAAABgCAYAAADimHc4AAAEvElEQVR4Aeydv69MURDHH7UIBSEUqDQ0KqFRiIZo6IhEgqAQlcQ/oFMo/EiIhGg0KpGIggSVaFQqiValQsV82Lzivb1nzrnnx9yzRs7su+/Md+Y7M989m92V3Ld2yf+ZTsAFMB3/0pIL4AIYT8CY3k+AC2A8AWN6PwEugPEEjOl7PQHnZW6PxL7MjGv25Ne+Vo8CfJAR3xM7LbZjZlyzh0+2+lm9CfBURrtPbGjhAzPk/7c/oceeBOBZfjJidmDARkDtIT0JcCxhXCnYhLTloT0JsD+h/RRsQtry0J4E2J7Qfgo2IW15aE8ClO9+AhldAGMRpi4Ar+UPZEa/xVIXMcSSIzW2GX6KAmyU7q+KvRV7L3ZWbOwilhzkIie5x+aqEjc1AXgP/0Y6vSl2QKzUIhc5yQ1HqbzZeaYiAO9a+CqBT7F7srsaTkBuOOCCcxjZyNNQgMGOeEbyzGz5ZRpccMI9WFgLh7UADIBn5K4Wza7ggBNualjhaverpQA0zgDadTufiRqoZb638q6VADRM4ynt/RTwXbFLYkfF9optmBnX7OEDA1Zc0YtaqCk6oBTQQoCDUjwNy4+o9UpQvJ1k2Bfl+o7Yc7FPYt9nxjV7+MCAJYZYgUQtaqK2KHApkIUA1xKKvy7Yw2IPxX6JxS6wxBBLjti4lNpicwZxrQW4INXwUiE/1HVOEDfEchc5yBWTh9qoMQZbBNNSgG1ScewzjHco9wVfapGLnDH5qJFaY7DZmJYC0NjOiIo3C4b/bJcfRRc5ya0lpUZq1XBF/K0E2CTVnhHT1iEBfBOrtcgNh5afWqlZw2X7WwlwQipdLxZal8X5Wqz2ggOuEA+1UnMIE+XTQK0EOK4UwreVtxVMSTdccIZyajWHYqN9LQTgKB9RKnqm+Gu4NU5qpvYa3Ms5WwigfcLkPTsfoJaLanQBJ9whOq32UGyUr4UAu5VKHov/h1jrBSfcIV6t9lBslK+FAFuUSj4q/ppujVurPbu2KQjwNbuL8Qk07oUQYKsyH20ISniWW+PWas8iJ9hPAFMYtoU4AeuG+/vr4SvlvxcGDxq3Vnt2yS1OQHaRi5xgMQXoSDEXwFgsF8AFMJ6AMb2fABfAeALG9H4CXADjCRjT+wlwAYwnYEzvJ2BxBDDupFN6PwHGwrkALoDxBIzp/QS4AMYTMKb3E+ACGE/AmN5PgAtgPAFjej8BmQLkhrsAuRPMjHcBMgeYG+4C5E4wM94FyBxgbngJAbg1WMi0GkOxLXy59WnxQX8JAYIE7gxPwAUIz6e61wWoPuIwgQsQnk91rwtQfcRhgj4FCPfUldcFMJarhABrpIf/2aT98auEAOPZPdL/lqT1c8BPgLECPQiQ+32Q8YjD9D0I8CLcQtCbExtMXMrZgwCfM5rNic2gjQ/tQYCX8e2sQubErkpWY6MHAXgZeTKieWKIHRHaLiRBgHZFzWE6NWdP2xoTo+Us7u9FABrn0/YVLhQDA1aBTcPdkwBM7JY8cIdzbjvJ/T+5ESvGNXv4wAisj9WbAEz1nTxw41XugMutiDGu2cMn7n5WjwL0M92ISl2AiCHVhLgANacbkdsFiBhSTYgLUHO6EbldgIgh1YS4AMp0a7v/AAAA//9aRXhEAAAABklEQVQDALhvssEXv78aAAAAAElFTkSuQmCC",
-                  0,
-                  widget.chatId));
+          if (sender != 'system') {
+            _messages.add(Message(
+                item["text"],
+                sender == widget.myToken
+                    ? Sender.self
+                    : (sender == 'system' ? Sender.system : Sender.other),
+                sender,
+                pfp,
+                karma,
+                widget.chatId));
+            if (sender != widget.myToken) {
               _showNotification(item['text']);
             }
+          } else if (sender == 'system') {
+            _messages.add(Message(
+                item["text"],
+                Sender.system,
+                sender,
+                "iVBORw0KGgoAAAANSUhEUgAAAGAAAABgCAYAAADimHc4AAAEvElEQVR4Aeydv69MURDHH7UIBSEUqDQ0KqFRiIZo6IhEgqAQlcQ/oFMo/EiIhGg0KpGIggSVaFQqiValQsV82Lzivb1nzrnnx9yzRs7su+/Md+Y7M989m92V3Ld2yf+ZTsAFMB3/0pIL4AIYT8CY3k+AC2A8AWN6PwEugPEEjOl7PQHnZW6PxL7MjGv25Ne+Vo8CfJAR3xM7LbZjZlyzh0+2+lm9CfBURrtPbGjhAzPk/7c/oceeBOBZfjJidmDARkDtIT0JcCxhXCnYhLTloT0JsD+h/RRsQtry0J4E2J7Qfgo2IW15aE8ClO9+AhldAGMRpi4Ar+UPZEa/xVIXMcSSIzW2GX6KAmyU7q+KvRV7L3ZWbOwilhzkIie5x+aqEjc1AXgP/0Y6vSl2QKzUIhc5yQ1HqbzZeaYiAO9a+CqBT7F7srsaTkBuOOCCcxjZyNNQgMGOeEbyzGz5ZRpccMI9WFgLh7UADIBn5K4Wza7ggBNualjhaverpQA0zgDadTufiRqoZb638q6VADRM4ynt/RTwXbFLYkfF9optmBnX7OEDA1Zc0YtaqCk6oBTQQoCDUjwNy4+o9UpQvJ1k2Bfl+o7Yc7FPYt9nxjV7+MCAJYZYgUQtaqK2KHApkIUA1xKKvy7Yw2IPxX6JxS6wxBBLjti4lNpicwZxrQW4INXwUiE/1HVOEDfEchc5yBWTh9qoMQZbBNNSgG1ScewzjHco9wVfapGLnDH5qJFaY7DZmJYC0NjOiIo3C4b/bJcfRRc5ya0lpUZq1XBF/K0E2CTVnhHT1iEBfBOrtcgNh5afWqlZw2X7WwlwQipdLxZal8X5Wqz2ggOuEA+1UnMIE+XTQK0EOK4UwreVtxVMSTdccIZyajWHYqN9LQTgKB9RKnqm+Gu4NU5qpvYa3Ms5WwigfcLkPTsfoJaLanQBJ9whOq32UGyUr4UAu5VKHov/h1jrBSfcIV6t9lBslK+FAFuUSj4q/ppujVurPbu2KQjwNbuL8Qk07oUQYKsyH20ISniWW+PWas8iJ9hPAFMYtoU4AeuG+/vr4SvlvxcGDxq3Vnt2yS1OQHaRi5xgMQXoSDEXwFgsF8AFMJ6AMb2fABfAeALG9H4CXADjCRjT+wlwAYwnYEzvJ2BxBDDupFN6PwHGwrkALoDxBIzp/QS4AMYTMKb3E+ACGE/AmN5PgAtgPAFjej8BmQLkhrsAuRPMjHcBMgeYG+4C5E4wM94FyBxgbngJAbg1WMi0GkOxLXy59WnxQX8JAYIE7gxPwAUIz6e61wWoPuIwgQsQnk91rwtQfcRhgj4FCPfUldcFMJarhABrpIf/2aT98auEAOPZPdL/lqT1c8BPgLECPQiQ+32Q8YjD9D0I8CLcQtCbExtMXMrZgwCfM5rNic2gjQ/tQYCX8e2sQubErkpWY6MHAXgZeTKieWKIHRHaLiRBgHZFzWE6NWdP2xoTo+Us7u9FABrn0/YVLhQDA1aBTcPdkwBM7JY8cIdzbjvJ/T+5ESvGNXv4wAisj9WbAEz1nTxw41XugMutiDGu2cMn7n5WjwL0M92ISl2AiCHVhLgANacbkdsFiBhSTYgLUHO6EbldgIgh1YS4AMp0a7v/AAAA//9aRXhEAAAABklEQVQDALhvssEXv78aAAAAAElFTkSuQmCC",
+                0,
+                widget.chatId));
+            _showNotification(item['text']);
+          }
 
-            _scrollController
-                .jumpTo(_scrollController.position.maxScrollExtent);
-          });
+          // print("event recieved: $item");
+          // print("message: ${(_messages.last as Message).value}");
+
+          setState(() {});
         });
       });
 
@@ -298,13 +294,17 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
 
       setState(() {
         _evaluateButton = evalTemp;
+
+        loading = false;
         _deleteButton = deleteTemp;
+      });
+
+      setState(() {
+        _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
       });
     }();
 
-    setState(() {
-      loading = false;
-    });
+    // setState(() {});
   }
 
   Future<void> _showNotification(String messageText) async {
@@ -783,12 +783,14 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
           child: SafeArea(
               child: SingleChildScrollView(
             controller: _scrollController,
+            reverse: true,
             child: Padding(
-              padding: const EdgeInsets.only(bottom: 60),
+              padding: const EdgeInsets.only(bottom: 10),
               child: loading
-                  ? const Padding(
-                      padding: EdgeInsets.only(top: 15),
-                      child: Center(child: CircularProgressIndicator()))
+                  ? Padding(
+                      padding: EdgeInsets.only(
+                          bottom: MediaQuery.sizeOf(context).height / 2),
+                      child: const Center(child: CircularProgressIndicator()))
                   : Column(
                       children: _messages,
                       // children: <Widget>[
@@ -1007,10 +1009,13 @@ class _ChatPageState extends State<ChatPage> {
       bool chatsExist = await FirebaseChatTools.exists('/');
       if (!chatsExist) {
         if (mounted) {
-          setState(() {
-            _loading = false;
-          });
+          await Future.delayed(
+              Durations.medium2,
+              () => setState(() {
+                    _loading = false;
+                  }));
         }
+
         return;
       }
 
@@ -1049,9 +1054,11 @@ class _ChatPageState extends State<ChatPage> {
       }
     } finally {
       if (mounted) {
-        setState(() {
-          _loading = false;
-        });
+        Future.delayed(
+            Durations.medium2,
+            () => setState(() {
+                  _loading = false;
+                }));
       }
     }
   }

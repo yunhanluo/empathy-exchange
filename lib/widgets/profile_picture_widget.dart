@@ -107,7 +107,7 @@ class ProfilePictureWidget extends StatelessWidget {
         width: size,
         height: size,
         decoration: BoxDecoration(
-          color: const Color(0xFF667eea).withOpacity(0.1),
+          color: const Color(0xFF667eea).withValues(alpha: 0.1),
           shape: BoxShape.circle,
           border: showBorder
               ? Border.all(

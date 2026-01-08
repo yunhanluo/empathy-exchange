@@ -128,41 +128,41 @@ class _HomePageState extends State<HomePage> {
 
   void _checkNegativeKarma() async {
     if (await FirebaseUserTools.load(
-              '${FirebaseAuth.instance.currentUser?.uid}/karma') <=
-          -100) {
-        if (mounted) {
-          showDialog(
-              context: context,
-              barrierDismissible: false,
-              builder: (BuildContext context2) {
-                return AlertDialog(
-                  backgroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  title: const Text("Your account has been terminated."),
-                  content: const Text("Reason: Too little karma."),
-                  actions: [
-                    TextButton(
-                        onPressed: () async {
-                          await FirebaseAuth.instance.signOut();
-                          if (mounted) Navigator.pop(context);
-                        },
-                        child: const Text("Log out")),
-                    TextButton(
-                        onPressed: () async {
-                          setState(() {
-                            _checkNegativeKarma();
-                          });
-                          
-                          if (mounted) Navigator.pop(context);
-                        },
-                        child: const Text("Retry")),
-                  ],
-                );
-              });
-        }
+            '${FirebaseAuth.instance.currentUser?.uid}/karma') <=
+        -100) {
+      if (mounted) {
+        showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (BuildContext context2) {
+              return AlertDialog(
+                backgroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                title: const Text("Your account has been terminated."),
+                content: const Text("Reason: Too little karma."),
+                actions: [
+                  TextButton(
+                      onPressed: () async {
+                        await FirebaseAuth.instance.signOut();
+                        if (mounted) Navigator.pop(context);
+                      },
+                      child: const Text("Log out")),
+                  TextButton(
+                      onPressed: () async {
+                        setState(() {
+                          _checkNegativeKarma();
+                        });
+
+                        if (mounted) Navigator.pop(context);
+                      },
+                      child: const Text("Retry")),
+                ],
+              );
+            });
       }
+    }
   }
 
   @override
@@ -192,7 +192,7 @@ class _HomePageState extends State<HomePage> {
         decoration: BoxDecoration(
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha: 0.1),
               blurRadius: 10,
               offset: const Offset(0, -2),
             ),
@@ -272,7 +272,7 @@ class _HomePageState extends State<HomePage> {
                 borderRadius: BorderRadius.circular(24),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
+                    color: Colors.black.withValues(alpha: 0.1),
                     blurRadius: 20,
                     offset: const Offset(0, 10),
                   ),
