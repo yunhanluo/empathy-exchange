@@ -1,6 +1,7 @@
 // import 'package:empathy_exchange/lib/firebase.dart';
 import 'package:empathy_exchange/lib/firebase.dart';
 import 'package:empathy_exchange/screens/chat_screen.dart';
+import 'package:empathy_exchange/services/profanity_check.dart';
 import 'package:empathy_exchange/widgets/material.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -31,6 +32,8 @@ void main() async {
   await dotenv.load(fileName: ".env");
 
   // FirebaseTools.initialize();
+
+  ProfanityFilter.init();
 
   runApp(const MyApp());
 }
