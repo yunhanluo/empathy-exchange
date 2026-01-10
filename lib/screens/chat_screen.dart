@@ -997,7 +997,7 @@ class _ChatPageState extends State<ChatPage> {
       ),
     ));
 
-    setState(() {});
+    if (mounted) setState(() {});
   }
 
   Future<void> rebuildChats() async {

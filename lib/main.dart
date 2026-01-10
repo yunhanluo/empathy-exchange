@@ -1,4 +1,3 @@
-// import 'package:empathy_exchange/lib/firebase.dart';
 import 'package:empathy_exchange/lib/firebase.dart';
 import 'package:empathy_exchange/screens/chat_screen.dart';
 import 'package:empathy_exchange/services/profanity_check.dart';

@@ -24,18 +24,10 @@ class ProfanityFilter {
 
       if (dat.length < 2) continue;
 
-      profanity["*" * dat[0].length] = RegExp(dat[1], multiLine: true, caseSensitive: false);
+      profanity[dat[0]] = RegExp(dat[1], multiLine: true, caseSensitive: false);
     }
 
     initialized = true;
-
-    print(profanity);
-    print(censor("1. sh,it!! i don't like s,!hit. ashit?"));
-    print(censor("2. i don't like"));
-    print("3. ${hasProfanity("sh,it!! i don't like s,!hit. ashit?")}");
-    print("4. ${hasProfanity("i don't like")}");
-    print("5. ${getProfanities("sh,it!! i don't like s,!hit. ashit?")}");
-    print("6. ${getProfanities("i don't like")}");
   }
 
   static bool hasProfanity(String input) {
@@ -61,9 +53,10 @@ class ProfanityFilter {
   static String censor(String input) {
     String out = input;
 
-    profanity.forEach((censored, re) {
-      out = input.replaceAll(re, censored);
-    });
+    for (int i = 0; i < profanity.length; i++) {
+      String key = profanity.keys.elementAt(i);
+      out = out.replaceAll(profanity.values.elementAt(i), "*" * key.length);
+    }
 
     return out;
   }
