@@ -40,7 +40,11 @@ class OpenAIService {
           Check to see that you have evaluations for ALL users in the sample of the conversation.
           DO NOT include a field called "advice." This is not a valid field.
           Also, it is highly important that you do not randomly decide to change the case of the emails in any way. For example, do not change "test@test.com" to "Test@Test.com".
-          **** or something similar indicates profanity, by the way. It is almost always bad.'''
+          **** or something similar indicates profanity, by the way. It is almost always bad.
+          Be careful about the type of the evaluations array. It must be a list of maps. For example, '"evaluations": {
+        "example@example.com": 5
+    },' is not a valid format. It must be a list of maps. For example, 'evaluations:[{"example@example.com": 5}]'.
+     '''
     }
   ];
 
@@ -73,8 +77,10 @@ class OpenAIService {
       // Load chat data
       Map data = await FirebaseChatTools.load('/');
       String chatKey = data.keys.elementAt(chatId);
-
-      final String summary = await FirebaseChatTools.load('$chatKey/summary');
+      String summary = '';
+      if (await FirebaseChatTools.exists('$chatKey/summary')) {
+        summary = (await FirebaseChatTools.load('$chatKey/summary')) as String;
+      }
       dynamic users = await FirebaseChatTools.load('$chatKey/tokens');
       List<String> userList = FirebaseTools.asList(users).cast<String>(); //Hmm
       dynamic messagesSnapshot = await FirebaseChatTools.load('$chatKey/data');
@@ -230,7 +236,7 @@ class OpenAIService {
         final evalData = jsonDecode(evalResponse.body);
         String evaluationText =
             evalData['choices']?[0]?['message']?['content'] ?? '';
-        // print('Evaluation text: $evaluationText');
+        print('Evaluation text: $evaluationText');
         Map<String, dynamic> jsonResponse = jsonDecode(evaluationText);
         String reasoning = jsonResponse['reasoning'] ?? '';
         String message = jsonResponse['message'] ?? '';
@@ -239,6 +245,8 @@ class OpenAIService {
           // Convert evaluations from dynamic to properly typed List<Map<String, int>>
           List<Map<String, int>> evaluations = [];
           dynamic evaluationsRaw = jsonResponse['evaluations'];
+          print('Evaluations raw: $evaluationsRaw');
+          print('Evaluations raw type: ${evaluationsRaw.runtimeType}');
           if (evaluationsRaw is List) {
             for (var evalItem in evaluationsRaw) {
               if (evalItem is Map) {
@@ -258,14 +266,19 @@ class OpenAIService {
               }
             }
           }
+          print('Hi');
+          print('Evaluations: $evaluations');
 
           String finalMessage = '';
           for (Map<String, int> evaluation in evaluations) {
             for (MapEntry<String, int> entry in evaluation.entries) {
               String email = entry.key;
               String? uid = await FirebaseUserTools.getUidFromToken(entry.key);
+              print('Uid: $uid');
+              print('Email: $email');
               String displayName =
                   await FirebaseUserTools.load('$uid/displayName');
+              print('DisplayName: $displayName');
               int points = entry.value;
               String formattedEmail =
                   email.replaceAll('.', '_dot_').replaceAll('@', '_at_');
@@ -295,7 +308,7 @@ class OpenAIService {
                   "${points.abs()} ${points == 1 ? 'point has' : 'points have'} been ${points >= 0 ? 'added' : 'deducted'} ${points >= 0 ? 'to' : 'from'} $displayName's total. (Email: $email) \n \n";
             }
           }
-          // print("Final message: $finalMessage");
+          print("Final message: $finalMessage");
           await FirebaseChatTools.listPush('$chatKey/data', {
             'sender': 'system',
             'text':

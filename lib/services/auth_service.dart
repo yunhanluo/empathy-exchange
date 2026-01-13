@@ -6,6 +6,10 @@ class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
 
+  // Default profile picture (simple user icon as base64 PNG)
+  static const String defaultProfilePicture =
+      'iVBORw0KGgoAAAANSUhEUgAAAGAAAABgCAYAAADimHc4AAACX0lEQVR4AbyVS+tNURiH999AGfoKBhRFLgkRE5QBGcjAgImRO7lfcr/lzsCQlMQEycDEpeSWXIqk+AxGJhLPs//r1bv3uTgTTr/nfdd69zrrd/Zee60zovrHn/9mMJ4buQTdNJHiC/jV4hn9MdBXcQcfGLUGLkJoLg0nfUeeDm3NoPAFHONYmp0Kgynl0lryBVCPCW/hByyEoRZO+o2aekS4Ah0KgzdcmQlqHeE8qMmEkfAA2npCYTRoRKpWEs5CQ2Fg8TlhM6j1hHOQ9ZSOj0Ne0w5p5N3Z30gIQ5pVlQ0snDEUNpDzLxpFP+Qj1Sj65tkG8HGRhpUNfFus/iRMAOUvClMnHaIopFo+wrpB8A6/k9VYg2SDyxZgEXyEMNlE+zRkhen8XKS9DNR1g2SDWORY0Gzi2pzyC4V4bR+WfqT7pTG15I41iHrkbLKF4klQcwjv4RX0Vb6DXgOzyVYGnQA1yfA3BjFwjmyyjcJxGEjZwP3gl5YbupBNtnP9GLS1oBReltxYgxWleKPkSL6+cdh5ZkV9B42jkHWvdFaX3DD4GkWy234c2c3U67DjcrWTcARCnl22fQHMDQML8wzgwfWJHFpCww2WWUpN7SIcBuXrG3PY7zDwBL1aXxkOt0hOepfc1m0KsRl30z4EyjnMNXmR6wJhFcRB5870MS2m1pa1vCZ7GHAQGupm4ACPh3yrdyhqlLFGuVa8eXvpHYA/6mXgAG/Vx+Ni5+PZa+JfpoedY25SiMe1j/Z+qNXPoB5A+AzTwIkys6jFW0OzyvvkmgUZxMBxg6KJP8L/6vo7vwEAAP//QQI5RQAAAAZJREFUAwC4tmkxSpZfbQAAAABJRU5ErkJggg==';
+
   // Get current user
   User? get currentUser => _auth.currentUser;
 
@@ -23,9 +27,22 @@ class AuthService {
         password: password,
       );
       if (!await FirebaseUserTools.exists(result.user!.uid)) {
+        // Generate default display name
+        String defaultDisplayName =
+            (result.user?.displayName?.isNotEmpty == true)
+                ? result.user!.displayName!
+                : (result.user?.email != null &&
+                        result.user!.email!.split('@').first.isNotEmpty
+                    ? result.user!.email!.split('@').first
+                    : 'User');
+        final emailKey = result.user!.email!
+            .replaceAll('@', '_at_')
+            .replaceAll('.', '_dot_');
+
         await FirebaseUserTools.save(result.user!.uid, {
           "email": result.user?.email,
           "pairToken": result.user?.email,
+          "displayName": defaultDisplayName,
           "karma": 0,
           "badges": [
             {
@@ -35,6 +52,13 @@ class AuthService {
             }
           ],
         });
+        if (!await FirebaseUserTools.exists('profilePictures/$emailKey')) {
+          await FirebaseUserTools.save('profilePictures/$emailKey', {
+            'profilePicture': defaultProfilePicture,
+            'email': result.user?.email,
+            'lastUpdated': DateTime.now().millisecondsSinceEpoch
+          });
+        }
       }
       return result;
     } on FirebaseAuthException catch (e) {
@@ -46,15 +70,27 @@ class AuthService {
   Future<UserCredential?> createUserWithEmailAndPassword({
     required String email,
     required String password,
+    String? displayName,
   }) async {
     try {
       final UserCredential result = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
+
+      // Generate default display name if not provided
+      String defaultDisplayName = displayName?.trim().isNotEmpty == true
+          ? displayName!.trim()
+          : (email.split('@').first.isNotEmpty
+              ? email.split('@').first
+              : 'User');
+      final emailKey =
+          result.user!.email!.replaceAll('@', '_at_').replaceAll('.', '_dot_');
+
       await FirebaseUserTools.save(result.user!.uid, {
         "email": result.user?.email,
         "pairToken": result.user?.email,
+        "displayName": defaultDisplayName,
         "karma": 0,
         "badges": [
           {
@@ -64,6 +100,13 @@ class AuthService {
           }
         ],
       });
+      if (!await FirebaseUserTools.exists('profilePictures/$emailKey')) {
+        await FirebaseUserTools.save('profilePictures/$emailKey', {
+          'profilePicture': defaultProfilePicture,
+          'email': result.user?.email,
+          'lastUpdated': DateTime.now().millisecondsSinceEpoch
+        });
+      }
       return result;
     } on FirebaseAuthException catch (e) {
       throw _handleAuthException(e);
@@ -93,10 +136,22 @@ class AuthService {
       // Sign in to Firebase with the Google credential
       final UserCredential result =
           await _auth.signInWithCredential(credential);
-      if (!await FirebaseUserTools.exists(result.user!.uid)) {
+      final emailKey =
+          result.user!.email!.replaceAll('@', '_at_').replaceAll('.', '_dot_');
+      if (!await FirebaseUserTools.exists('profilePictures/$emailKey')) {
+        // Generate default display name
+        String defaultDisplayName =
+            (result.user?.displayName?.isNotEmpty == true)
+                ? result.user!.displayName!
+                : (result.user?.email != null &&
+                        result.user!.email!.split('@').first.isNotEmpty
+                    ? result.user!.email!.split('@').first
+                    : 'User');
+
         await FirebaseUserTools.save(result.user!.uid, {
           "email": result.user?.email,
           "pairToken": result.user?.email,
+          "displayName": defaultDisplayName,
           "karma": 0,
           "badges": [
             {
@@ -106,6 +161,13 @@ class AuthService {
             }
           ],
         });
+        if (result.user?.email != null) {
+          await FirebaseUserTools.save('profilePictures/$emailKey', {
+            'profilePicture': defaultProfilePicture,
+            'email': result.user?.email,
+            'lastUpdated': DateTime.now().millisecondsSinceEpoch
+          });
+        }
       }
       return result;
     } catch (e) {

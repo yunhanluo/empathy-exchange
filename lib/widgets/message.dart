@@ -354,8 +354,29 @@ class _MessageState extends State<Message> {
 
     Padding padding = const Padding(padding: EdgeInsets.only(left: 5));
     Widget pfpSec = Column(children: <Widget>[
-      Image.memory(base64.decode(widget.pfp64.replaceAll(RegExp(r'\s'), '')),
-          width: 20, height: 20, fit: BoxFit.cover),
+      widget.pfp64.isEmpty
+          ? Container(
+              width: 20,
+              height: 20,
+              decoration: BoxDecoration(
+                color: const Color(0xFF667eea).withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: const Color(0xFF667eea),
+                  width: 1,
+                ),
+              ),
+              child: const Icon(
+                Icons.person,
+                size: 12,
+                color: Color(0xFF667eea),
+              ),
+            )
+          : Image.memory(
+              base64.decode(widget.pfp64.replaceAll(RegExp(r'\s'), '')),
+              width: 20,
+              height: 20,
+              fit: BoxFit.cover),
       Text(widget.karma.toString(), style: const TextStyle(fontSize: 10))
     ]);
 

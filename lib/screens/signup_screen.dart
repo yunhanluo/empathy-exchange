@@ -38,6 +38,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       await _authService.createUserWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
+        displayName: _nameController.text.trim(),
       );
       _showSuccessDialog();
     } catch (e) {
