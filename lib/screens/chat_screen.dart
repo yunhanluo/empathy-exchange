@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:js_interop';
+import 'package:empathy_exchange/services/profanity_check.dart';
 import 'package:empathy_exchange/widgets/material.dart';
 import 'package:empathy_exchange/widgets/message.dart';
 import 'package:empathy_exchange/lib/firebase.dart';
@@ -75,6 +76,7 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
 
   final List<Widget> _messages = <Widget>[];
 
+  Widget _editButton = const SizedBox.shrink();
   Widget _evaluateButton = const SizedBox.shrink();
   Widget _deleteButton = const SizedBox.shrink();
   Widget _inviteButton = const SizedBox.shrink();
@@ -326,6 +328,50 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
                 tooltip: "Delete chat",
                 icon: const Icon(Icons.delete))
             : const SizedBox.shrink();
+        final Widget editTemp = thing['owner'] == widget.myToken
+            ? IconButton(
+                onPressed: () {
+                  showDialog(
+                      context: context,
+                      builder: (BuildContext context) {
+                        return AlertDialog(
+                          backgroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          title: const Text("Edit Chat Name"),
+                          content: TextField(
+                            decoration: const InputDecoration(
+                              hintText: "Enter new chat name...",
+                            ),
+                            onSubmitted: (String value) async {
+                              _renameChat(value);
+                              Navigator.of(context).pop();
+                            },
+                            controller: _chatNameController,
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () {
+                                Navigator.of(context).pop();
+                              },
+                              child: const Text("Cancel"),
+                            ),
+                            TextButton(
+                              onPressed: () async {
+                                _renameChat(_chatNameController.text);
+                                setState(() {});
+                                Navigator.of(context).pop();
+                              },
+                              child: const Text("Okay"),
+                            ),
+                          ],
+                        );
+                      });
+                },
+                tooltip: "Edit Chat Name",
+                icon: const Icon(Icons.edit))
+            : const SizedBox.shrink();
         final Widget inviteTemp = thing['owner'] == widget.myToken
             ? IconButton(
                 onPressed: () {
@@ -336,11 +382,12 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
             : const SizedBox.shrink();
 
         setState(() {
+          _editButton = editTemp;
           _evaluateButton = evalTemp;
-
-          loading = false;
           _deleteButton = deleteTemp;
           _inviteButton = inviteTemp;
+
+          loading = false;
         });
 
         if (mounted && _scrollController.hasClients) {
@@ -395,7 +442,7 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
   void _send(String v) async {
     if (v.trim().isEmpty) return;
 
-    bool hasProf = FirebaseChatTools.filter.hasProfanity(v);
+    bool hasProf = ProfanityFilter.hasProfanity(v);
 
     // final emailKey = myToken.replaceAll('.', '_dot_').replaceAll('@', '_at_');
     // String pfp = await FirebaseUserTools.load(
@@ -425,12 +472,11 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
       if (thing is int) {
         await FirebaseUserTools.set(
             '${FirebaseAuth.instance.currentUser?.uid}/karma',
-            thing - FirebaseChatTools.filter.getAllProfanity(v).length);
+            thing - ProfanityFilter.getProfanities(v));
       } else if (thing is String) {
         await FirebaseUserTools.set(
             '${FirebaseAuth.instance.currentUser?.uid}/karma',
-            int.parse(thing) -
-                FirebaseChatTools.filter.getAllProfanity(v).length);
+            int.parse(thing) - ProfanityFilter.getProfanities(v));
       }
     }
 
@@ -714,10 +760,10 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
     String chatKey = data.keys.elementAt(widget.chatId);
 
     await FirebaseChatTools.set(
-        '/$chatKey/title', FirebaseChatTools.filter.censor(newName.trim()));
+        '/$chatKey/title', ProfanityFilter.censor(newName.trim()));
 
     setState(() {
-      _actualTitle = FirebaseChatTools.filter.censor(newName.trim());
+      _actualTitle = ProfanityFilter.censor(newName.trim());
     });
   }
 
@@ -781,48 +827,7 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
   Widget build(BuildContext context) {
     return appInstance(Column(children: <Widget>[
       AppBar(title: Text(_actualTitle ?? widget.title), actions: [
-        IconButton(
-            onPressed: () {
-              showDialog(
-                  context: context,
-                  builder: (BuildContext context) {
-                    return AlertDialog(
-                      backgroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      title: const Text("Edit Chat Name"),
-                      content: TextField(
-                        decoration: const InputDecoration(
-                          hintText: "Enter new chat name...",
-                        ),
-                        onSubmitted: (String value) async {
-                          _renameChat(value);
-                          Navigator.of(context).pop();
-                        },
-                        controller: _chatNameController,
-                      ),
-                      actions: [
-                        TextButton(
-                          onPressed: () {
-                            Navigator.of(context).pop();
-                          },
-                          child: const Text("Cancel"),
-                        ),
-                        TextButton(
-                          onPressed: () async {
-                            _renameChat(_chatNameController.text);
-                            setState(() {});
-                            Navigator.of(context).pop();
-                          },
-                          child: const Text("Okay"),
-                        ),
-                      ],
-                    );
-                  });
-            },
-            tooltip: "Edit Chat Name",
-            icon: const Icon(Icons.edit)),
+        _editButton,
         IconButton(
             onPressed: () {
               showDialog(
@@ -1133,6 +1138,7 @@ class _ChatPageState extends State<ChatPage> {
       try {
         await FirebaseChatTools.listPush('/', {
           "tokens": parts,
+          "owner": myToken,
           "title":
               '${await FirebaseUserTools.load('${FirebaseAuth.instance.currentUser!.uid}/displayName')} & ${await FirebaseUserTools.load('${await FirebaseUserTools.getUidFromToken(enteredUid)}/displayName')}',
           "data": [
@@ -1270,7 +1276,7 @@ class _ChatPageState extends State<ChatPage> {
       ),
     ));
 
-    setState(() {});
+    if (mounted) setState(() {});
   }
 
   Future<void> _acceptInvitation(int chatIndex, String chatKey) async {
@@ -1669,6 +1675,10 @@ class _ChatPageState extends State<ChatPage> {
   @override
   void initState() {
     super.initState();
+
+    if (!ProfanityFilter.initialized) {
+      ProfanityFilter.init();
+    }
 
     () async {
       await rebuildChats();

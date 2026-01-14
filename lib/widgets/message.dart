@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:empathy_exchange/lib/firebase.dart';
+import 'package:empathy_exchange/services/profanity_check.dart';
 import 'package:empathy_exchange/widgets/sidetooltip.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -34,7 +35,7 @@ class _MessageState extends State<Message> {
     super.initState();
 
     _censoredValue =
-        FirebaseChatTools.filter.censor(_censoredValue ?? widget.value);
+        ProfanityFilter.censor(_censoredValue ?? widget.value);
   }
 
   @override
@@ -122,7 +123,7 @@ class _MessageState extends State<Message> {
 
     await FirebaseUserTools.listPush('$uid/badges', {
       'giver': mytoken,
-      'reason': FirebaseChatTools.filter.censor(reason),
+      'reason': ProfanityFilter.censor(reason),
       'icon': icon,
       'time': DateTime.now().toIso8601String(),
       'status': 'pending',
@@ -208,8 +209,8 @@ class _MessageState extends State<Message> {
             padding: const EdgeInsets.symmetric(
                 horizontal: 12, vertical: 8), // Adjusted padding
             child: ConstrainedBox(
-                constraints: const BoxConstraints(
-                  maxWidth: 400,
+                constraints: BoxConstraints(
+                  maxWidth: MediaQuery.sizeOf(context).width - 120,
                 ),
                 child: Text(
                   _censoredValue ?? widget.value,
