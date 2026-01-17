@@ -6,7 +6,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class OpenAIService {
   // System prompts
-  static const List<Map<String, String>> systemPromptEvaluation = [
+  /* static const List<Map<String, String>> systemPromptEvaluation = [
     {
       'role': 'system',
       'content':
@@ -22,7 +22,7 @@ class OpenAIService {
           **** or something similar indicates profanity, by the way. It is almost always bad.'''
     }
   ];
-
+*/
   static const List<Map<String, String>> systemPromptOwnerEvaluation = [
     {
       'role': 'system',
@@ -207,9 +207,7 @@ class OpenAIService {
         String evaluateFor = type == 'owner' ? 'everyone' : email;
 
         List<Map<String, String>> evalPrompt = [
-          ...type == 'owner'
-              ? systemPromptOwnerEvaluation
-              : systemPromptEvaluation,
+          ...systemPromptOwnerEvaluation,
           {
             'role': 'user',
             'content':
@@ -241,7 +239,7 @@ class OpenAIService {
         String reasoning = jsonResponse['reasoning'] ?? '';
         String message = jsonResponse['message'] ?? '';
 
-        if (type == 'owner') {
+        if (type == 'owner' || type == 'message') {
           // Convert evaluations from dynamic to properly typed List<Map<String, int>>
           List<Map<String, int>> evaluations = [];
           dynamic evaluationsRaw = jsonResponse['evaluations'];
@@ -286,7 +284,7 @@ class OpenAIService {
                 karmaHistory[formattedEmail] = {};
               }
               karmaHistory[formattedEmail]?[chatLength] = points;
-              if (chatLength == 5) {
+              if (chatLength == 5 || chatLength == 10) {
                 karmaHistory[formattedEmail]?[0] = 0;
               }
               await FirebaseChatTools.set(
@@ -312,48 +310,13 @@ class OpenAIService {
           await FirebaseChatTools.listPush('$chatKey/data', {
             'sender': 'system',
             'text':
-                '''Our AI has evaluated the last ten messages for empathy, kindness, and positivity. \n\n $finalMessage Here is the AI's evaluation of the state of the conversation: $reasoning \n \n ${message == '' ? '' : 'The AI would like to share the following message:'} $message''',
+                '''Our AI has evaluated the last ${type == 'owner' ? 'ten' : 'five'} messages for empathy, kindness, and positivity. \n\n $finalMessage Here is the AI's evaluation of the state of the conversation: $reasoning \n \n ${message == '' ? '' : 'The AI would like to share the following message:'} $message''',
           });
-        } else {
-          int points = jsonResponse['points'] ?? 0;
-          String formattedEmailKey =
-              email.replaceAll('.', '_dot_').replaceAll('@', '_at_');
-          email.replaceAll('.', '_dot_').replaceAll('@', '_at_');
-
-          if (karmaHistory[formattedEmailKey] == null) {
-            karmaHistory[formattedEmailKey] = {};
-          }
-          karmaHistory[formattedEmailKey]?[chatLength] = points;
-
-          // print("Karma history: $karmaHistory");
-
-          await FirebaseChatTools.set('$chatKey/karmaHistory', karmaHistory);
-
-          await FirebaseChatTools.listPush('$chatKey/data', {
-            'sender': 'system',
-            'text':
-                '''Our AI has evaluated the messages for $displayName for empathy, kindness, and positivity. \n ${points.abs()} ${points == 1 ? 'point has' : 'points have'} been ${points >= 0 ? 'added' : 'deducted'} ${points >= 0 ? 'to' : 'from'} $displayName's total. \n \n The AI has given the following reasoning: "$reasoning \n \n ${message == '' ? '' : 'The AI would like to share the following message:'} $message''',
-          });
-
-          dynamic oldPoints = await FirebaseUserTools.load('${user.uid}/karma');
-
-          int currentKarma = 0;
-          if (oldPoints is int) {
-            currentKarma = oldPoints;
-          } else if (oldPoints is String) {
-            currentKarma = int.tryParse(oldPoints) ?? 0;
-          } else if (oldPoints is double) {
-            currentKarma = oldPoints.toInt();
-          } else {
-            currentKarma = int.tryParse(oldPoints.toString()) ?? 0;
-          }
-          await FirebaseUserTools.set(
-              '${user.uid}/karma', currentKarma + points);
         }
         await FirebaseChatTools.set('$chatKey/summary', summaryText);
       }
     } catch (e) {
-      // print('OpenAI Error: $e');
+      print('OpenAI Error: $e');
       rethrow;
     }
   }

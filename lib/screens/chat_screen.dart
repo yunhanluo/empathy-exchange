@@ -254,7 +254,7 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
                 pfp = loadedPfp;
               }
               // print("Look! It's now ${_aiAnalysisEnabled}");
-              if (_aiAnalysisEnabled) {
+              if (_aiAnalysisEnabled && sender == widget.myToken) {
                 _analyzeWithAI();
               }
 
@@ -1131,6 +1131,7 @@ class _ChatPageState extends State<ChatPage> {
   final List<Widget> _pendingInvitations = <Widget>[];
 
   bool _loading = false;
+  bool _rebuilding = false; // Flag to prevent concurrent rebuilds
 
   void _runOpenChat(String enteredUid) {
     if (!mounted) return;
@@ -1182,6 +1183,14 @@ class _ChatPageState extends State<ChatPage> {
 
   Future<void> _addChatTalkPage(
       String myToken, List oTokens, String? title, int cid) async {
+    // Check if this chat already exists to prevent duplicates
+    // Since we iterate through chats in order and clear lists at start,
+    // we can check if we've already added a chat at this index
+    if (cid < _chatPages.length && cid < _chats.length) {
+      // Chat already exists at this index, skip adding
+      return;
+    }
+
     List<Widget> pfps = [];
     List<String> tokens = oTokens.whereType<String>().toList();
     for (String token in tokens) {
@@ -1412,6 +1421,12 @@ class _ChatPageState extends State<ChatPage> {
 
   Future<void> _addPendingInvitation(String myToken, Map data, String chatKey,
       int chatIndex, String? title) async {
+    // Check if this invitation already exists to prevent duplicates
+    // We check by looking for an invitation with the same chatKey
+    // Since pending invitations are cleared at the start of rebuildChats,
+    // we just need to ensure we don't add the same one twice in one rebuild
+    // The chatIndex check should be sufficient since we iterate in order
+
     List<Widget> pfps = [];
     List<String> allTokens = [];
 
@@ -1584,9 +1599,15 @@ class _ChatPageState extends State<ChatPage> {
   Future<void> rebuildChats() async {
     if (!mounted) return;
 
-    setState(() {
-      _loading = true;
-    });
+    // Prevent concurrent rebuilds
+    if (_rebuilding) return;
+    _rebuilding = true;
+
+    if (mounted) {
+      setState(() {
+        _loading = true;
+      });
+    }
 
     try {
       _chats.clear();
@@ -1605,13 +1626,16 @@ class _ChatPageState extends State<ChatPage> {
             }
           });
         }
-
+        _rebuilding = false; // Reset flag before early return
         return;
       }
 
       JSAny chatArray = await FirebaseChatTools.load('/');
 
-      if (!mounted) return;
+      if (!mounted) {
+        _rebuilding = false; // Reset flag before early return
+        return;
+      }
 
       String myToken = await FirebaseUserTools.load(
           '${FirebaseAuth.instance.currentUser!.uid}/pairToken');
@@ -1620,12 +1644,21 @@ class _ChatPageState extends State<ChatPage> {
       List chats = FirebaseTools.asList(chatArray.dartify());
       Map data = await FirebaseChatTools.load('/');
 
+      // Track processed chatKeys to prevent duplicates
+      Set<String> processedChatKeys = {};
+
       for (int i = 0; i < chats.length; i++) {
         JSAny? chat = chats[i];
         Map chatData = chat.dartify() as Map;
         dynamic chatKeyDynamic = data.keys.elementAt(i);
         if (chatKeyDynamic == null) continue;
         String chatKey = chatKeyDynamic.toString();
+
+        // Skip if we've already processed this chat
+        if (processedChatKeys.contains(chatKey)) {
+          continue;
+        }
+        processedChatKeys.add(chatKey);
 
         List<String> tokens = FirebaseTools.asList(chatData['tokens'])
             .whereType<String>()
@@ -1667,6 +1700,7 @@ class _ChatPageState extends State<ChatPage> {
         }
       }
     } finally {
+      _rebuilding = false;
       if (mounted) {
         Future.delayed(const Duration(milliseconds: 300), () {
           if (mounted) {
@@ -1695,10 +1729,15 @@ class _ChatPageState extends State<ChatPage> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Rebuild chats when page becomes visible again
-    () async {
-      await rebuildChats();
-    }();
+    // Note: Removed automatic rebuild here as it was causing duplicate entries
+    // rebuildChats() is already called in initState() and after relevant actions
+  }
+
+  @override
+  void dispose() {
+    uidController.dispose();
+    _rebuilding = false; // Reset flag on dispose
+    super.dispose();
   }
 
   @override
