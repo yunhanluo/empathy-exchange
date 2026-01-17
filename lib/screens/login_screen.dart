@@ -151,7 +151,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Connect, with empathy',
+                          'Connect with empathy',
                           style: GoogleFonts.nunito(
                             fontSize: 16,
                             color: Colors.grey[600],

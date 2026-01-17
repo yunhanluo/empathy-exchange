@@ -201,6 +201,9 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
         }
 
         setState(() {
+          // Clear existing messages to prevent duplicates on refresh
+          _messages.clear();
+
           List itemList = FirebaseTools.asList(items);
           for (JSAny? item in itemList.take(itemList.length - 1)) {
             Map message = item as Map;
@@ -224,6 +227,9 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
                 (sender == widget.myToken ? myKarma : theirKarmas[sender] ?? 0),
                 widget.chatId));
           }
+
+          // Cancel any existing subscription before creating a new one
+          _subscription?.cancel();
 
           thisRef = FirebaseChatTools.ref
               .child('/${data.keys.elementAt(widget.chatId)}/data');
@@ -601,6 +607,7 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
             .whereType<String>()
             .toList();
       }
+      print("Current tokens: $currentPendingTokens");
 
       // Check if user is already in the chat
       if (currentTokens.contains(token)) {
