@@ -1093,8 +1093,8 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
                       });
                     },
                     tooltip: _aiAnalysisEnabled
-                        ? "Disable AI Analysis (Your End Only)"
-                        : "Enable AI Analysis (Your End Only)",
+                        ? "Disable AI Analysis"
+                        : "Enable AI Analysis",
                     icon: _aiAnalysisEnabled
                         ? const Icon(Icons.psychology, size: 24)
                         : const Icon(Icons.cancel, size: 20, color: Colors.red),

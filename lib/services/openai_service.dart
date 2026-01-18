@@ -204,14 +204,14 @@ class OpenAIService {
 
         // print('Creating evaluation');
 
-        String evaluateFor = type == 'owner' ? 'everyone' : email;
+        //String evaluateFor = type == 'owner' ? 'everyone' : email;
 
         List<Map<String, String>> evalPrompt = [
           ...systemPromptOwnerEvaluation,
           {
             'role': 'user',
             'content':
-                'Here is the summary of the conversation so far:\n $summaryText\n Now here are the latest messages. \n $messagesText. Please evaluate the messages for $evaluateFor.'
+                'Here is the summary of the conversation so far:\n $summaryText\n Now here are the latest messages. \n $messagesText. Please evaluate all the messages.'
           }
         ];
 
