@@ -70,7 +70,7 @@ class OpenAIService {
     }
     //Next get the user's email.
     String email = user.email ?? '';
-    String displayName = user.displayName ?? '';
+    // String displayName = user.displayName ?? '';
     String apiKey = dotenv.env['OPENAI_API_KEY'] ?? 'fallback-key';
 
     try {
@@ -234,7 +234,7 @@ class OpenAIService {
         final evalData = jsonDecode(evalResponse.body);
         String evaluationText =
             evalData['choices']?[0]?['message']?['content'] ?? '';
-        print('Evaluation text: $evaluationText');
+        // print('Evaluation text: $evaluationText');
         Map<String, dynamic> jsonResponse = jsonDecode(evaluationText);
         String reasoning = jsonResponse['reasoning'] ?? '';
         String message = jsonResponse['message'] ?? '';
@@ -243,8 +243,8 @@ class OpenAIService {
           // Convert evaluations from dynamic to properly typed List<Map<String, int>>
           List<Map<String, int>> evaluations = [];
           dynamic evaluationsRaw = jsonResponse['evaluations'];
-          print('Evaluations raw: $evaluationsRaw');
-          print('Evaluations raw type: ${evaluationsRaw.runtimeType}');
+          // print('Evaluations raw: $evaluationsRaw');
+          // print('Evaluations raw type: ${evaluationsRaw.runtimeType}');
           if (evaluationsRaw is List) {
             for (var evalItem in evaluationsRaw) {
               if (evalItem is Map) {
@@ -264,19 +264,19 @@ class OpenAIService {
               }
             }
           }
-          print('Hi');
-          print('Evaluations: $evaluations');
+          // print('Hi');
+          // print('Evaluations: $evaluations');
 
           String finalMessage = '';
           for (Map<String, int> evaluation in evaluations) {
             for (MapEntry<String, int> entry in evaluation.entries) {
               String email = entry.key;
               String? uid = await FirebaseUserTools.getUidFromToken(entry.key);
-              print('Uid: $uid');
-              print('Email: $email');
+              // print('Uid: $uid');
+              // print('Email: $email');
               String displayName =
                   await FirebaseUserTools.load('$uid/displayName');
-              print('DisplayName: $displayName');
+              // print('DisplayName: $displayName');
               int points = entry.value;
               String formattedEmail =
                   email.replaceAll('.', '_dot_').replaceAll('@', '_at_');
@@ -306,7 +306,7 @@ class OpenAIService {
                   "${points.abs()} ${points == 1 ? 'point has' : 'points have'} been ${points >= 0 ? 'added' : 'deducted'} ${points >= 0 ? 'to' : 'from'} $displayName's total. (Email: $email) \n \n";
             }
           }
-          print("Final message: $finalMessage");
+          // print("Final message: $finalMessage");
           await FirebaseChatTools.listPush('$chatKey/data', {
             'sender': 'system',
             'text':
@@ -316,7 +316,7 @@ class OpenAIService {
         await FirebaseChatTools.set('$chatKey/summary', summaryText);
       }
     } catch (e) {
-      print('OpenAI Error: $e');
+      // print('OpenAI Error: $e');
       rethrow;
     }
   }

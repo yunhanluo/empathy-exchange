@@ -607,7 +607,7 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
             .whereType<String>()
             .toList();
       }
-      print("Current tokens: $currentPendingTokens");
+      // print("Current tokens: $currentPendingTokens");
 
       // Check if user is already in the chat
       if (currentTokens.contains(token)) {
@@ -644,7 +644,7 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
 
       // Add the new token
       currentPendingTokens.add(token);
-      print("Current pending tokens! $currentPendingTokens");
+      // print("Current pending tokens! $currentPendingTokens");
       currentPendingTokens.sort();
 
       // Update the chat tokens
@@ -1089,7 +1089,7 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
                     onPressed: () {
                       setState(() {
                         _aiAnalysisEnabled = !_aiAnalysisEnabled;
-                        print("Look! It's now ${_aiAnalysisEnabled}");
+                        // print("Look! It's now ${_aiAnalysisEnabled}");
                       });
                     },
                     tooltip: _aiAnalysisEnabled
@@ -1431,10 +1431,10 @@ class _ChatPageState extends State<ChatPage> {
     List<String> allTokens = [];
 
     // Get all tokens (both active and pending)
-    print(
-        "The data does ${(data.containsKey('tokens')) ? "" : "not"} have tokens");
-    print(
-        "The data does ${(data.containsKey('pendingTokens') && data['pendingTokens'] != null) ? "" : "not"} have pending tokens");
+    // print(
+    //     "The data does ${(data.containsKey('tokens')) ? "" : "not"} have tokens");
+    // print(
+    //     "The data does ${(data.containsKey('pendingTokens') && data['pendingTokens'] != null) ? "" : "not"} have pending tokens");
     if (data.containsKey('tokens')) {
       allTokens.addAll(
           FirebaseTools.asList(data['tokens']).whereType<String>().toList());
@@ -1444,15 +1444,15 @@ class _ChatPageState extends State<ChatPage> {
           .whereType<String>()
           .toList());
     }
-    print("All tokens! $allTokens");
+    // print("All tokens! $allTokens");
 
     // Remove myToken from the list to show other participants
     allTokens.remove(myToken);
-    print("This is going as planned so far");
+    // print("This is going as planned so far");
 
     for (String token in allTokens) {
       if (await FirebaseUserTools.getUidFromToken(token) == null) {
-        print("Oops!");
+        // print("Oops!");
         continue;
       }
 
@@ -1467,7 +1467,7 @@ class _ChatPageState extends State<ChatPage> {
         }
 
         if (pfp.isEmpty) {
-          print("Adding default profile picture!");
+          // print("Adding default profile picture!");
           pfps.add(Container(
             width: 20,
             height: 20,
@@ -1486,7 +1486,7 @@ class _ChatPageState extends State<ChatPage> {
             ),
           ));
         } else {
-          print("Adding a non-default profile picture!");
+          // print("Adding a non-default profile picture!");
           pfps.add(Image.memory(
               base64.decode(pfp.replaceAll(RegExp(r'\s'), '')),
               width: 20,
@@ -1494,7 +1494,7 @@ class _ChatPageState extends State<ChatPage> {
               fit: BoxFit.cover));
         }
       } catch (e) {
-        print("Error loading profile picture! $e");
+        // print("Error loading profile picture! $e");
         // If profile picture fails to load, show default
         pfps.add(Container(
           width: 20,
@@ -1516,7 +1516,7 @@ class _ChatPageState extends State<ChatPage> {
       }
     }
 
-    print("Adding pending invitation to the list!");
+    // print("Adding pending invitation to the list!");
     _pendingInvitations.add(Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -1592,8 +1592,8 @@ class _ChatPageState extends State<ChatPage> {
         ],
       ),
     ));
-    print("That worked!");
-    print("Pending invitations! $_pendingInvitations");
+    // print("That worked!");
+    // print("Pending invitations! $_pendingInvitations");
   }
 
   Future<void> rebuildChats() async {
@@ -1639,7 +1639,7 @@ class _ChatPageState extends State<ChatPage> {
 
       String myToken = await FirebaseUserTools.load(
           '${FirebaseAuth.instance.currentUser!.uid}/pairToken');
-      print("My token! $myToken");
+      // print("My token! $myToken");
 
       List chats = FirebaseTools.asList(chatArray.dartify());
       Map data = await FirebaseChatTools.load('/');
@@ -1658,6 +1658,7 @@ class _ChatPageState extends State<ChatPage> {
         if (processedChatKeys.contains(chatKey)) {
           continue;
         }
+
         processedChatKeys.add(chatKey);
 
         List<String> tokens = FirebaseTools.asList(chatData['tokens'])
@@ -1670,8 +1671,9 @@ class _ChatPageState extends State<ChatPage> {
               .whereType<String>()
               .toList();
         }
-        print("Tokens! $tokens");
-        print("Pending tokens! $pendingTokens");
+
+        // print("Tokens! $tokens");
+        // print("Pending tokens! $pendingTokens");
 
         if (tokens.contains(myToken)) {
           dynamic titleDynamic = chatData['title'];
@@ -1681,7 +1683,7 @@ class _ChatPageState extends State<ChatPage> {
         } else if (pendingTokens.contains(myToken)) {
           dynamic titleDynamic = chatData['title'];
           String? title = titleDynamic?.toString();
-          print("Adding pending invitation title! $title");
+          // print("Adding pending invitation title! $title");
           await _addPendingInvitation(myToken, chatData, chatKey, i, title);
         }
       }
