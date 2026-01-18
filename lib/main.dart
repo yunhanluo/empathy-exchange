@@ -13,10 +13,13 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await dotenv.load(fileName: ".env");
+
   await Firebase.initializeApp(
     // options: DefaultFirebaseOptions.currentPlatform,
-    options: const FirebaseOptions(
-      apiKey: "AIzaSyCESD67BYe9qPr1XGiEfvm3oUsqWodvRJw",
+    options: FirebaseOptions(
+      apiKey: dotenv.env["FIREBASE_API_KEY"] ?? "AIzaSyCESD67BYe9qPr1XGiEfvm3oUsqWodvRJw",
       authDomain: "empathy-exchange-473417.firebaseapp.com",
       databaseURL:
           "https://empathy-exchange-473417-default-rtdb.firebaseio.com",
@@ -27,8 +30,6 @@ void main() async {
       measurementId: "G-WB44LX8J7K",
     ),
   );
-
-  await dotenv.load(fileName: ".env");
 
   // FirebaseTools.initialize();
 
