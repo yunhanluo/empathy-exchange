@@ -20,6 +20,7 @@ int _ppage = 0;
 
 typedef KarmaHistoryRecord = ({
   String user,
+  String displayName,
   List<FlSpot> history,
   Color color,
 });
@@ -811,6 +812,22 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
     for (MapEntry<String, Map<int, int>> entry in karmaHistory.entries) {
       String user = entry.key;
 
+      // Get display name for this user
+      String displayName =
+          user.replaceAll('_at_', '@').replaceAll('_dot_', '.');
+      try {
+        String? uid = await FirebaseUserTools.getUidFromToken(user);
+        if (uid != null) {
+          Map userData = await FirebaseUserTools.load(uid);
+          String? name = userData['displayName']?.toString();
+          if (name != null && name.isNotEmpty) {
+            displayName = name;
+          }
+        }
+      } catch (e) {
+        // If we can't find display name, use email as fallback
+      }
+
       List<FlSpot> spots = [];
       int lastMessageValue = 0;
       for (int i = entry.value.keys.first; i <= lastMessageTime; i += 5) {
@@ -824,7 +841,12 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
         }
       }
 
-      var record = (user: user, history: spots, color: getColorForUser(user));
+      var record = (
+        user: user,
+        displayName: displayName,
+        history: spots,
+        color: getColorForUser(user)
+      );
       formattedHistory.add(record);
     }
     return formattedHistory;
@@ -889,13 +911,28 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
                                             ),
                                           ),
                                           const SizedBox(width: 4),
-                                          Text(
-                                            record.user
-                                                .replaceAll('_at_', '@')
-                                                .replaceAll('_dot_', '.'),
-                                            style: const TextStyle(
-                                              fontSize: 12,
-                                            ),
+                                          Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Text(
+                                                record.displayName,
+                                                style: const TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                              Text(
+                                                record.user
+                                                    .replaceAll('_at_', '@')
+                                                    .replaceAll('_dot_', '.'),
+                                                style: TextStyle(
+                                                  fontSize: 10,
+                                                  color: Colors.grey[600],
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ],
                                       );
@@ -911,9 +948,9 @@ class _ChatTalkPageState extends State<_ChatTalkPage> {
                                           leftTitles: const AxisTitles(
                                             axisNameWidget: Tooltip(
                                               message:
-                                                  'This tracks how many karma points you have gained or lost during this chat.',
+                                                  'This tracks how many kindness points you have gained or lost during this chat.',
                                               child: Text(
-                                                'Karma Points',
+                                                'Kindness Points',
                                                 style: TextStyle(
                                                   color: Color(0xff37434d),
                                                   fontWeight: FontWeight.bold,
