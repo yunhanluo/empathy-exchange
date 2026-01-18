@@ -43,7 +43,7 @@ class OpenAIService {
           **** or something similar indicates profanity, by the way. It is almost always bad.
           Be careful about the type of the evaluations array. It must be a list of maps. For example, '"evaluations": {
         "example@example.com": 5
-    },' is not a valid format. It must be a list of maps. For example, 'evaluations:[{"example@example.com": 5}]'.
+    },' is not a valid format. It must be a list of maps. For example, 'evaluations:[{"example@example.com": 5}]'. It is important that you do not reference the emails of the users. For example, say 'one user' instead of 'example@example.com' I repeat, do not reference the names that are in the emails, as the may not be accurate. Please do not do this, as it will cause our critical systems to fail.
      '''
     }
   ];
@@ -56,7 +56,7 @@ class OpenAIService {
            Your specific goal is summarizing a conversation and capturing the essential nuances that have happenend. 
            What major things? Who said what? Differentiate based on the usernames. Be very brief.
            Additionally, you will be given a short summary of the conversation so far. You must add to this summary
-           based on the messages you are given. Do not include any introductory phrases at the beginning, such as summary update.'''
+           based on the messages you are given. Do not include any introductory phrases at the beginning, such as summary update. It is highly important that you do not reference the names that appear in the emails, such as Joe in joe@example.com, because these names might not be accurate. Please do not do this, as it will cause our critical systems to fail.'''
     }
   ];
 
@@ -177,7 +177,7 @@ class OpenAIService {
           {
             'role': 'user',
             'content':
-                'The last few messages, which must be summarized:\n$messagesText. \n The summary so far: \n$summary'
+                'The last few messages, which must be summarized:\n$messagesText. \n The summary so far: \n$summary.'
           }
         ];
 
