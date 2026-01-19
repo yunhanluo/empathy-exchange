@@ -19,7 +19,7 @@ void main() async {
   await Firebase.initializeApp(
     // options: DefaultFirebaseOptions.currentPlatform,
     options: FirebaseOptions(
-      apiKey: dotenv.env["FIREBASE_API_KEY"] ?? "AIzaSyCESD67BYe9qPr1XGiEfvm3oUsqWodvRJw",
+      apiKey: dotenv.env["FIREBASE_API_KEY"] ?? "backup-key-here",
       authDomain: "empathy-exchange-473417.firebaseapp.com",
       databaseURL:
           "https://empathy-exchange-473417-default-rtdb.firebaseio.com",
