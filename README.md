@@ -195,6 +195,10 @@ Open Source - See LICENSE file for details
 **Platform**: Web, iOS, Android  
 **Developed for**: 2025 Presidential AI Challenge
 
+## Video Link
+
+Click this [link](https://drive.google.com/file/d/1v-MOR1LzbHMBHgCW76QpRQ0Qc47OyJsK/view?ts=696e7f83) to watch a demo of the app's main features
+
 ## 📞 Support
 
 For questions or issues, please open an issue in the repository.
