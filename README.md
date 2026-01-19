@@ -149,7 +149,7 @@ A custom pattern-based profanity filter:
 - Scans messages for inappropriate content
 - Automatically deducts karma points
 - Censors inappropriate language
-- Maintains a comprehensive database of profanity patterns
+- Maintains a comprehensive database of encoded profanity patterns
 
 ## 🎯 Key Features Explained
 
